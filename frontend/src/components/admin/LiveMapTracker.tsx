@@ -91,7 +91,8 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
 
   // 2. Connect to Socket.io for Real-Time Live Uber-style Customer Movement Updates
   useEffect(() => {
-    const socket: Socket = io('http://localhost:5000', { withCredentials: true });
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : 'http://localhost:5000');
+    const socket: Socket = io(socketUrl, { withCredentials: true });
 
     socket.on('connect', () => {
       console.log('⚡ [Live Map] WebSockets connected to server.');

@@ -126,7 +126,8 @@ const CheckoutPage: React.FC = () => {
 
       // Start continuous background GPS watching for live Uber tracking
       if (navigator.geolocation) {
-        const socket: Socket = io('http://localhost:5000', { withCredentials: true });
+        const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : 'http://localhost:5000');
+        const socket: Socket = io(socketUrl, { withCredentials: true });
         navigator.geolocation.watchPosition(
           (pos) => {
             socket.emit('customer:location_update', {
