@@ -29,17 +29,47 @@ export const getProducts = async (req: AuthRequest, res: Response, next: NextFun
       filter.isActive = isActive === 'true';
     }
 
-    if (search) filter.$text = { $search: String(search) };
-    if (category) filter.category = category;
-    if (brand) filter.brand = brand;
-    if (gender) filter.gender = gender;
+    // Search by name or description (regex, case-insensitive)
+    if (search) {
+      const searchRegex = new RegExp(String(search).trim(), 'i');
+      filter.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+        { shortDescription: searchRegex },
+        { tags: searchRegex },
+      ];
+    }
+
+    // Category resolution (supports both ObjectId and category slug like 'men', 'shoes', etc.)
+    if (category) {
+      const catStr = String(category).trim().toLowerCase();
+      if (catStr.match(/^[0-9a-fA-F]{24}$/)) {
+        filter.category = catStr;
+      } else {
+        const catDoc = await Category.findOne({ slug: catStr });
+        if (catDoc) {
+          filter.category = catDoc._id;
+        } else if (['men', 'women', 'unisex', 'kids'].includes(catStr)) {
+          filter.gender = catStr;
+        } else {
+          // Attempt name regex match for category
+          const matchedCat = await Category.findOne({ name: new RegExp(catStr, 'i') });
+          if (matchedCat) filter.category = matchedCat._id;
+        }
+      }
+    }
+
+    if (brand) {
+      if (String(brand).match(/^[0-9a-fA-F]{24}$/)) {
+        filter.brand = brand;
+      }
+    }
+
+    if (gender) filter.gender = String(gender).toLowerCase();
     if (featured === 'true') filter.isFeatured = true;
     if (bestSeller === 'true') filter.isBestSeller = true;
     if (newArrival === 'true') filter.isNewArrival = true;
-    if (flashSale === 'true') {
-      filter.isFlashSale = true;
-      filter.flashSaleEndsAt = { $gt: new Date() };
-    }
+    if (flashSale === 'true') filter.isFlashSale = true;
     if (minPrice || maxPrice) {
       filter.price = {};
       if (minPrice) (filter.price as Record<string, number>).$gte = Number(minPrice);
