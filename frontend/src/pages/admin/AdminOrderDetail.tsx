@@ -17,6 +17,7 @@ const AdminOrderDetail: React.FC = () => {
   const queryClient = useQueryClient();
   const [newStatus, setNewStatus] = useState('');
   const [statusNote, setStatusNote] = useState('');
+  const [smsLog, setSmsLog] = useState<{ message: string; isError: boolean; time: string } | null>(null);
 
   const { data: order, isLoading } = useQuery<Order>({
     queryKey: ['admin-order', id],
@@ -26,12 +27,18 @@ const AdminOrderDetail: React.FC = () => {
 
   const updateStatusMutation = useMutation({
     mutationFn: () => orderService.updateStatus(id!, newStatus, statusNote),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       toast.success('Order status updated!');
+      if (data?.message) {
+        setSmsLog({ message: data.message, isError: false, time: new Date().toLocaleTimeString() });
+      }
       queryClient.invalidateQueries({ queryKey: ['admin-order', id] });
       setStatusNote('');
     },
-    onError: () => toast.error('Failed to update status'),
+    onError: (err: any) => {
+      toast.error('Failed to update status');
+      setSmsLog({ message: err.response?.data?.message || 'Failed to update status', isError: true, time: new Date().toLocaleTimeString() });
+    },
   });
 
   const cancelMutation = useMutation({
@@ -46,10 +53,14 @@ const AdminOrderDetail: React.FC = () => {
   const sendSMSMutation = useMutation({
     mutationFn: () => orderService.sendDirectSMS(id!),
     onSuccess: (data: any) => {
-      toast.success(data?.message || '📱 SMS dispatched to customer!');
+      const msg = data?.message || '📱 SMS dispatched to customer!';
+      toast.success(msg);
+      setSmsLog({ message: msg, isError: false, time: new Date().toLocaleTimeString() });
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Failed to dispatch SMS');
+      const msg = err.response?.data?.message || 'Failed to dispatch SMS';
+      toast.error(msg);
+      setSmsLog({ message: msg, isError: true, time: new Date().toLocaleTimeString() });
     },
   });
 
@@ -138,6 +149,17 @@ const AdminOrderDetail: React.FC = () => {
               <FiMessageSquare size={14} /> {sendSMSMutation.isPending ? 'Sending Gateway SMS...' : 'Send Bulk Gateway SMS'}
             </button>
           </div>
+
+          {/* Live Gateway SMS Diagnostic Status Log */}
+          {smsLog && (
+            <div className={`mt-3 p-3 rounded text-xs font-mono border ${smsLog.isError ? 'bg-red-950/40 border-red-500/40 text-red-300' : 'bg-green-950/40 border-green-500/40 text-green-300'}`}>
+              <div className="flex items-center justify-between font-bold mb-1 border-b border-white/10 pb-1">
+                <span>📡 Live Gateway Response Status ({smsLog.time})</span>
+                <span>{smsLog.isError ? '⚠️ GATEWAY ERROR' : '✅ DELIVERED'}</span>
+              </div>
+              <p className="text-white font-sans text-xs mt-1">{smsLog.message}</p>
+            </div>
+          )}
         </div>
 
         {/* Progress Bar */}
