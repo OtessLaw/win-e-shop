@@ -69,6 +69,21 @@ const CheckoutPage: React.FC = () => {
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number; mapUrl: string } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
+  // Automatically capture Customer Hardware GPS on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const mapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+          setUserCoords({ latitude, longitude, mapUrl });
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    }
+  }, []);
+
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
