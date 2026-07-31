@@ -24,7 +24,7 @@ export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<SMSResul
     const envKey = (process.env.FASREACH_SMS_API_KEY || process.env.SMS_API_KEY || '').trim();
     const apiKey = (envKey && envKey !== 'your_api_key_here' && !envKey.includes('1785443302014')) ? envKey : liveKey;
 
-    const senderId = (process.env.FASREACH_SMS_SENDER_ID || process.env.SMS_SENDER_ID || 'FASREACH').trim().slice(0, 11);
+    const senderId = (process.env.FASREACH_SMS_SENDER_ID || process.env.SMS_SENDER_ID || 'JNJVINTAGE').trim().slice(0, 11);
 
     console.log(`📱 [FasReach Dispatching] To: ${ghanaPhone10} | Key: ${apiKey.slice(0, 12)}... | Sender: ${senderId}`);
 
@@ -32,10 +32,8 @@ export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<SMSResul
     try {
       const payload = {
         to: ghanaPhone10,
-        recipient: ghanaPhone10,
-        phone: ghanaPhone10,
         message,
-        sender: senderId,
+        sender: 'JNJVINTAGE',
       };
 
       const res = await axios.post(
