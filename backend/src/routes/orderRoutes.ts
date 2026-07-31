@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   createOrder, verifyPaystackPayment, getMyOrders, getOrderDetail,
   getAllOrders, updateOrderStatus, cancelOrder, validateCoupon, sendOrderSMS,
+  getSMSSettings, saveSMSSettings, sendTestSMS,
 } from '../controllers/orderController';
 import { protect, requirePermission, optionalAuth } from '../middleware/auth';
 
@@ -12,6 +13,12 @@ router.post('/', optionalAuth, createOrder);
 router.post('/verify-payment', optionalAuth, verifyPaystackPayment);
 router.post('/validate-coupon', optionalAuth, validateCoupon);
 router.get('/my-orders', protect, getMyOrders);
+
+// Admin SMS Gateway Configuration Routes
+router.get('/admin/sms-settings', protect, requirePermission('orders:view'), getSMSSettings);
+router.post('/admin/sms-settings', protect, requirePermission('orders:update'), saveSMSSettings);
+router.post('/admin/send-test-sms', protect, requirePermission('orders:update'), sendTestSMS);
+
 router.get('/:id', optionalAuth, getOrderDetail);
 
 // Admin routes

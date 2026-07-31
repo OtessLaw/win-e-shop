@@ -58,4 +58,19 @@ export const orderService = {
     const res = await api.post(`/orders/${id}/send-sms`);
     return res.data;
   },
+
+  getSMSSettings: async () => {
+    const res = await api.get('/orders/admin/sms-settings');
+    return res.data.data;
+  },
+
+  saveSMSSettings: async (data: { apiKey?: string; senderId?: string; provider?: string; smsEndpoint?: string }) => {
+    const res = await api.post('/orders/admin/sms-settings', data);
+    return res.data;
+  },
+
+  sendTestSMS: async (phone: string, message?: string) => {
+    const res = await api.post('/orders/admin/send-test-sms', { phone, message });
+    return res.data;
+  },
 };

@@ -7,6 +7,7 @@ import { FiArrowLeft, FiCheck, FiMessageSquare, FiSend, FiPhoneCall } from 'reac
 import { orderService } from '../../services/orderService';
 import { formatCurrency, formatDate, getOrderStatusLabel } from '../../utils/helpers';
 import LiveMapTracker from '../../components/admin/LiveMapTracker';
+import SMSSettingsModal from '../../components/admin/SMSSettingsModal';
 import type { Order, OrderStatus } from '../../types';
 
 const STATUS_STEPS: OrderStatus[] = ['pending', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered'];
@@ -18,6 +19,7 @@ const AdminOrderDetail: React.FC = () => {
   const [newStatus, setNewStatus] = useState('');
   const [statusNote, setStatusNote] = useState('');
   const [smsLog, setSmsLog] = useState<{ message: string; isError: boolean; time: string } | null>(null);
+  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
 
   const { data: order, isLoading } = useQuery<Order>({
     queryKey: ['admin-order', id],
@@ -148,7 +150,17 @@ const AdminOrderDetail: React.FC = () => {
             >
               <FiMessageSquare size={14} /> {sendSMSMutation.isPending ? 'Sending Gateway SMS...' : 'Send Bulk Gateway SMS'}
             </button>
+
+            {/* Configure Live Gateway Settings */}
+            <button
+              onClick={() => setIsSMSModalOpen(true)}
+              className="bg-gray-800 hover:bg-gray-700 text-gold-400 border border-gold-500/30 font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md ml-auto"
+            >
+              ⚙️ Configure SMS API Keys
+            </button>
           </div>
+
+          <SMSSettingsModal isOpen={isSMSModalOpen} onClose={() => setIsSMSModalOpen(false)} />
 
           {/* Live Gateway SMS Diagnostic Status Log */}
           {smsLog && (

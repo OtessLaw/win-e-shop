@@ -8,7 +8,8 @@ import { Notification } from '../models/Notification';
 import { AppError } from '../utils/AppError';
 import { sendSuccess, sendPaginatedSuccess, getPaginationParams, buildPaginationResult } from '../utils/helpers';
 import { sendEmail, emailTemplates } from '../config/email';
-import { sendSMS, smsTemplates } from '../services/smsService';
+import { sendSMS, smsTemplates, getDynamicSMSConfig } from '../services/smsService';
+import { SystemSetting } from '../models/SystemSetting';
 import { AuthRequest } from '../middleware/auth';
 
 // ─── Create Order ─────────────────────────────────────────────────────────────
@@ -409,6 +410,81 @@ export const validateCoupon = async (req: AuthRequest, res: Response, next: Next
     }
 
     sendSuccess(res, { discount, coupon: { code: coupon.code, type: coupon.type, value: coupon.value } }, 'Coupon applied!');
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: Get Live SMS Gateway Settings ──────────────────────────────────────
+export const getSMSSettings = async (_req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const config = await getDynamicSMSConfig();
+    sendSuccess(res, config, 'SMS Settings retrieved successfully.');
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: Save Live SMS Gateway Settings ──────────────────────────────────────
+export const saveSMSSettings = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { apiKey, senderId, provider, smsEndpoint } = req.body;
+
+    if (apiKey !== undefined) {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'sms_api_key' },
+        { key: 'sms_api_key', value: apiKey.trim(), description: 'SMS Gateway API Key' },
+        { upsert: true, new: true }
+      );
+    }
+
+    if (senderId !== undefined) {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'sms_sender_id' },
+        { key: 'sms_sender_id', value: senderId.trim().slice(0, 11), description: 'SMS Approved Sender ID' },
+        { upsert: true, new: true }
+      );
+    }
+
+    if (provider !== undefined) {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'sms_provider' },
+        { key: 'sms_provider', value: provider.trim().toLowerCase(), description: 'SMS Provider' },
+        { upsert: true, new: true }
+      );
+    }
+
+    if (smsEndpoint !== undefined) {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'sms_endpoint' },
+        { key: 'sms_endpoint', value: smsEndpoint.trim(), description: 'SMS API Endpoint URL' },
+        { upsert: true, new: true }
+      );
+    }
+
+    const updatedConfig = await getDynamicSMSConfig();
+    sendSuccess(res, updatedConfig, 'SMS settings saved to database successfully!');
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: Send Test SMS ───────────────────────────────────────────────────────
+export const sendTestSMS = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { phone, message } = req.body;
+    if (!phone) return next(new AppError('Recipient phone number is required.', 400));
+
+    const result = await sendSMS({
+      to: phone,
+      message: message || 'Hello from J&J Vintage Collection Ghana! Your SMS Gateway is connected and working perfectly. ✨',
+    });
+
+    if (result.success) {
+      sendSuccess(res, result, `📱 ${result.message}`);
+    } else {
+      return next(new AppError(`⚠️ ${result.message}`, 400));
+    }
   } catch (err) {
     next(err);
   }
