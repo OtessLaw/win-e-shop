@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { WishlistProvider } from './contexts/WishlistContext';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import AppRouter from './router';
 
 const queryClient = new QueryClient({
@@ -19,17 +20,19 @@ const queryClient = new QueryClient({
 
 const App: React.FC = () => {
   return (
-    <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <AppRouter />
-            </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </HelmetProvider>
+    <ErrorBoundary>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <AppRouter />
+              </WishlistProvider>
+            </CartProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </HelmetProvider>
+    </ErrorBoundary>
   );
 };
 

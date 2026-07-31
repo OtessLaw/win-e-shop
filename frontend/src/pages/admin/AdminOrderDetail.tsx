@@ -43,16 +43,6 @@ const AdminOrderDetail: React.FC = () => {
     onError: () => toast.error('Failed to cancel order'),
   });
 
-  if (isLoading) return (
-    <div className="space-y-4">
-      {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton h-20 rounded bg-gray-800" />)}
-    </div>
-  );
-
-  if (!order) return <div className="text-center py-20 text-gray-400">Order not found</div>;
-
-  const currentStepIndex = STATUS_STEPS.indexOf(order.orderStatus as OrderStatus);
-
   const sendSMSMutation = useMutation({
     mutationFn: () => orderService.sendDirectSMS(id!),
     onSuccess: (data: any) => {
@@ -62,6 +52,16 @@ const AdminOrderDetail: React.FC = () => {
       toast.error(err.response?.data?.message || 'Failed to dispatch SMS');
     },
   });
+
+  if (isLoading) return (
+    <div className="space-y-4">
+      {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton h-20 rounded bg-gray-800" />)}
+    </div>
+  );
+
+  if (!order) return <div className="text-center py-20 text-gray-400">Order not found</div>;
+
+  const currentStepIndex = STATUS_STEPS.indexOf(order.orderStatus as OrderStatus);
 
   const cleanPhone = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
