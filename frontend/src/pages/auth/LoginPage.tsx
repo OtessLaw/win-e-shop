@@ -29,22 +29,24 @@ const LoginPage: React.FC = () => {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const loggedInUser = await login(data.email.trim(), data.password);
+      const loggedInUser = await login(data.email.trim(), data.password.trim());
       toast.success('Welcome back!');
       
       const adminRoles = ['super_admin', 'admin', 'product_manager', 'order_manager', 'customer_support', 'marketing_manager', 'accountant'];
-      const userRole = loggedInUser?.role?.name || '';
+      const userRole = typeof loggedInUser?.role === 'object' ? (loggedInUser.role as any)?.name : loggedInUser?.role || '';
       
       const from = (location.state as any)?.from?.pathname;
       if (from) {
         navigate(from, { replace: true });
-      } else if (adminRoles.includes(userRole)) {
+      } else if (adminRoles.includes(userRole) || userRole === 'super_admin') {
         navigate('/admin', { replace: true });
       } else {
         navigate('/account', { replace: true });
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Invalid email or password');
+      console.error('Login error full detail:', err);
+      const msg = err.response?.data?.message || err.message || 'Login failed';
+      toast.error(msg);
     }
   };
 
