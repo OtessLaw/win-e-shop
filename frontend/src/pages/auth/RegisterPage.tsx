@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 
 const schema = z.object({
@@ -51,10 +51,17 @@ const RegisterPage: React.FC = () => {
 
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-          <div className="text-center mb-10">
+          {/* Back to Home */}
+          <div className="mb-4">
+            <Link to="/" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-black transition-colors">
+              <FiArrowLeft size={15} /> Back to Home
+            </Link>
+          </div>
+
+          <div className="text-center mb-8">
             <Link to="/">
               <div className="font-display font-bold text-2xl tracking-widest">JJ VINTAGE</div>
-              <div className="text-xs text-gold-DEFAULT tracking-widest">COLLECTION</div>
+              <div className="text-xs text-yellow-500 tracking-widest">COLLECTION GHANA</div>
             </Link>
           </div>
 

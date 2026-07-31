@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { FiEye, FiEyeOff, FiLock } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiLock, FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 
 const schema = z.object({
@@ -84,9 +84,19 @@ const LoginPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-md"
           >
-            <div className="lg:hidden text-center mb-10">
+            {/* Back to Home */}
+            <div className="mb-6">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-black transition-colors"
+              >
+                <FiArrowLeft size={15} /> Back to Home
+              </Link>
+            </div>
+
+            <div className="lg:hidden text-center mb-8">
               <div className="font-display font-bold text-2xl tracking-widest">JJ VINTAGE</div>
-              <div className="text-xs text-gold-500 tracking-widest">COLLECTION</div>
+              <div className="text-xs text-yellow-500 tracking-widest">COLLECTION GHANA</div>
             </div>
 
             <h1 className="font-display font-bold text-3xl mb-2">Welcome Back</h1>
@@ -143,7 +153,7 @@ const LoginPage: React.FC = () => {
 
             <p className="text-center text-sm text-gray-500">
               Don't have an account?{' '}
-              <Link to="/register" className="text-black font-medium hover:text-gold-500 transition-colors">
+              <Link to="/register" className="text-black font-semibold hover:text-yellow-600 transition-colors underline underline-offset-2">
                 Create one
               </Link>
             </p>
