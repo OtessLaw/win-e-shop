@@ -341,7 +341,7 @@ export const sendOrderSMS = async (req: AuthRequest, res: Response, next: NextFu
       return next(new AppError('Customer phone number is missing on this order.', 400));
     }
 
-    const sent = await sendSMS({
+    const result = await sendSMS({
       to: order.shippingAddress.phone,
       message: smsTemplates.orderPlaced(
         order.shippingAddress.fullName,
@@ -351,10 +351,10 @@ export const sendOrderSMS = async (req: AuthRequest, res: Response, next: NextFu
       ),
     });
 
-    if (sent) {
-      sendSuccess(res, null, `Direct SMS receipt successfully sent to ${order.shippingAddress.phone}`);
+    if (result.success) {
+      sendSuccess(res, null, `📱 ${result.message}`);
     } else {
-      sendSuccess(res, null, `SMS dispatched to logger for ${order.shippingAddress.phone} (configure FASREACH_SMS_API_KEY for live delivery).`);
+      return next(new AppError(`⚠️ ${result.message}`, 400));
     }
   } catch (err) {
     next(err);

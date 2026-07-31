@@ -5,32 +5,39 @@ export interface SendSMSOptions {
   message: string;
 }
 
-export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<boolean> => {
+export interface SMSResult {
+  success: boolean;
+  provider: string;
+  message: string;
+}
+
+export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<SMSResult> => {
   try {
-    // Format Ghana phone number (e.g. 0541234567 -> 233541234567 or +233541234567)
     const rawDigits = to.replace(/\D/g, '');
     const ghanaPhone10 = rawDigits.startsWith('233') ? `0${rawDigits.slice(3)}` : (rawDigits.startsWith('0') ? rawDigits : `0${rawDigits}`);
     const ghanaPhone233 = rawDigits.startsWith('233') ? rawDigits : `233${rawDigits.replace(/^0/, '')}`;
     const formattedPlus233 = `+${ghanaPhone233}`;
 
-    const apiKey = process.env.FASREACH_SMS_API_KEY || process.env.SMS_API_KEY || process.env.ARKESEL_API_KEY || process.env.MNOTIFY_API_KEY;
-    const smsEndpoint = process.env.FASREACH_SMS_API_URL || process.env.SMS_API_URL || 'https://bulk-sms-platform.vercel.app/api/send-sms';
-    const senderId = process.env.FASREACH_SMS_SENDER_ID || process.env.SMS_SENDER_ID || 'JNJVINTAGE';
+    const apiKey = process.env.SMS_API_KEY || process.env.FASREACH_SMS_API_KEY || process.env.ARKESEL_API_KEY || process.env.MNOTIFY_API_KEY || process.env.HUBTEL_API_KEY;
+    const smsEndpoint = process.env.SMS_API_URL || process.env.FASREACH_SMS_API_URL || '';
+    const senderId = (process.env.SMS_SENDER_ID || process.env.FASREACH_SMS_SENDER_ID || 'JNJVINTAGE').slice(0, 11);
 
     if (!apiKey || apiKey === 'your_api_key_here') {
-      console.log(`📱 [SMS Simulation Mode - No API Key Set] To: ${formattedPlus233} | Sender: ${senderId}`);
-      console.log(`💬 Message: "${message}"`);
-      return true;
+      const msg = `No SMS API Key found in Render environment. Please add SMS_API_KEY in Render.`;
+      console.log(`📱 [SMS Simulation Mode] To: ${formattedPlus233} | ${msg}`);
+      return { success: false, provider: 'simulation', message: msg };
     }
 
     const endpointLower = smsEndpoint.toLowerCase();
+    const keyLower = apiKey.toLowerCase();
 
-    // ── 1. Arkesel SMS API ──────────────────────────────────────────────
-    if (endpointLower.includes('arkesel')) {
-      await axios.post(
-        smsEndpoint.includes('v2') ? smsEndpoint : 'https://api.arkesel.com/v2/sms/send',
+    // ── 1. Arkesel Auto-Detection ─────────────────────────────────────────
+    if (endpointLower.includes('arkesel') || keyLower.includes('arkesel') || process.env.ARKESEL_API_KEY) {
+      const targetUrl = smsEndpoint || 'https://api.arkesel.com/v2/sms/send';
+      const res = await axios.post(
+        targetUrl,
         {
-          sender: senderId.slice(0, 11),
+          sender: senderId,
           recipients: [ghanaPhone233],
           message,
         },
@@ -41,17 +48,18 @@ export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<boolean>
           },
         }
       );
-      console.log(`📱 [Arkesel SMS Sent] To: ${ghanaPhone233}`);
-      return true;
+      console.log(`📱 [Arkesel SMS Sent] To: ${ghanaPhone233}`, res.data);
+      return { success: true, provider: 'Arkesel', message: `SMS delivered via Arkesel to ${ghanaPhone233}` };
     }
 
-    // ── 2. mNotify SMS API ──────────────────────────────────────────────
-    if (endpointLower.includes('mnotify')) {
-      await axios.post(
-        'https://api.mnotify.com/api/sms/quick',
+    // ── 2. mNotify Auto-Detection ─────────────────────────────────────────
+    if (endpointLower.includes('mnotify') || keyLower.includes('mnotify') || process.env.MNOTIFY_API_KEY) {
+      const targetUrl = `https://api.mnotify.com/api/sms/quick?key=${encodeURIComponent(apiKey)}`;
+      const res = await axios.post(
+        targetUrl,
         {
           recipient: [ghanaPhone10],
-          sender: senderId.slice(0, 11),
+          sender: senderId,
           message,
           is_schedule: false,
         },
@@ -62,17 +70,17 @@ export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<boolean>
           },
         }
       );
-      console.log(`📱 [mNotify SMS Sent] To: ${ghanaPhone10}`);
-      return true;
+      console.log(`📱 [mNotify SMS Sent] To: ${ghanaPhone10}`, res.data);
+      return { success: true, provider: 'mNotify', message: `SMS delivered via mNotify to ${ghanaPhone10}` };
     }
 
-    // ── 3. Hubtel SMS API ──────────────────────────────────────────────
-    if (endpointLower.includes('hubtel')) {
+    // ── 3. Hubtel Auto-Detection ─────────────────────────────────────────
+    if (endpointLower.includes('hubtel') || process.env.HUBTEL_API_KEY) {
       const authHeader = apiKey.includes(':') ? `Basic ${Buffer.from(apiKey).toString('base64')}` : `Bearer ${apiKey}`;
-      await axios.post(
+      const res = await axios.post(
         'https://smsc.hubtel.com/v1/messages/send',
         {
-          From: senderId.slice(0, 11),
+          From: senderId,
           To: ghanaPhone233,
           Content: message,
         },
@@ -83,19 +91,20 @@ export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<boolean>
           },
         }
       );
-      console.log(`📱 [Hubtel SMS Sent] To: ${ghanaPhone233}`);
-      return true;
+      console.log(`📱 [Hubtel SMS Sent] To: ${ghanaPhone233}`, res.data);
+      return { success: true, provider: 'Hubtel', message: `SMS delivered via Hubtel to ${ghanaPhone233}` };
     }
 
-    // ── 4. FasReach / Custom SMS Platform (Default) ─────────────────────
-    await axios.post(
-      smsEndpoint,
+    // ── 4. Custom / Generic / FasReach SMS Gateway ────────────────────────
+    const targetUrl = smsEndpoint || 'https://bulk-sms-platform.vercel.app/api/send-sms';
+    const res = await axios.post(
+      targetUrl,
       {
         recipient: formattedPlus233,
         phone: ghanaPhone233,
         message,
-        senderId: senderId.slice(0, 11),
-        sender: senderId.slice(0, 11),
+        senderId,
+        sender: senderId,
       },
       {
         headers: {
@@ -106,11 +115,17 @@ export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<boolean>
       }
     );
 
-    console.log(`📱 [Custom/FasReach SMS Sent] To: ${formattedPlus233} via Sender ID: ${senderId}`);
-    return true;
+    console.log(`📱 [Generic SMS Sent] To: ${formattedPlus233} via ${targetUrl}`, res.data);
+    return { success: true, provider: 'Generic Gateway', message: `SMS delivered via gateway to ${formattedPlus233}` };
+
   } catch (error: any) {
-    console.error('❌ SMS Send Error Details:', error?.response?.data || error?.message || error);
-    return false;
+    const errorDetails = error?.response?.data?.message || error?.response?.data || error?.message || 'SMS delivery failed';
+    console.error('❌ SMS Send Error Details:', errorDetails);
+    return {
+      success: false,
+      provider: 'Gateway Error',
+      message: typeof errorDetails === 'object' ? JSON.stringify(errorDetails) : String(errorDetails),
+    };
   }
 };
 
