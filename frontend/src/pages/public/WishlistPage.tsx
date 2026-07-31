@@ -28,7 +28,7 @@ const WishlistPage: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Wishlist ({wishlist.length}) | JJ Vintage Collection</title>
+        <title>{`Wishlist (${wishlist.length}) | JJ Vintage Collection`}</title>
       </Helmet>
 
       <div className="bg-black text-white py-16 text-center">

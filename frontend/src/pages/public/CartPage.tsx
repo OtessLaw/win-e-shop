@@ -60,7 +60,7 @@ const CartPage: React.FC = () => {
 
   return (
     <>
-      <Helmet><title>Cart ({itemCount}) | JJ Vintage Collection</title></Helmet>
+      <Helmet><title>{`Cart (${itemCount}) | JJ Vintage Collection`}</title></Helmet>
 
       <div className="bg-gray-50 py-10 min-h-screen">
         <div className="container-brand">

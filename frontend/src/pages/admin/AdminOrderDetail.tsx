@@ -69,7 +69,7 @@ const AdminOrderDetail: React.FC = () => {
 
   return (
     <>
-      <Helmet><title>Order #{order.orderNumber} | JJ Vintage Admin</title></Helmet>
+      <Helmet><title>{`Order #${order.orderNumber} | JJ Vintage Admin`}</title></Helmet>
       <div className="space-y-6 text-white font-sans">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

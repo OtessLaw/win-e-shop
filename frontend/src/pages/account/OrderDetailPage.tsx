@@ -25,7 +25,7 @@ const OrderDetailPage: React.FC = () => {
 
   return (
     <>
-      <Helmet><title>Order #{order.orderNumber} | JJ Vintage Collection</title></Helmet>
+      <Helmet><title>{`Order #${order.orderNumber} | JJ Vintage Collection`}</title></Helmet>
 
       <div className="bg-gray-50 min-h-screen py-10">
         <div className="container-brand max-w-3xl">
