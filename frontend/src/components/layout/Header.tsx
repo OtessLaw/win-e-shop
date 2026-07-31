@@ -81,8 +81,8 @@ const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-50 transition-all duration-300">
       {/* Gold Luxury Announcement Bar */}
-      <div className="bg-gradient-to-r from-black via-gray-900 to-black text-gold-DEFAULT border-b border-gold-500/20 py-2 text-center text-xs font-mono tracking-wider flex items-center justify-center gap-2 overflow-hidden px-4">
-        <FiTruck size={14} className="text-gold-DEFAULT shrink-0 animate-bounce" />
+      <div className="py-2.5 text-center text-xs tracking-wider flex items-center justify-center gap-2 overflow-hidden px-4" style={{ background: 'linear-gradient(90deg, #b8952a 0%, #f5d06e 40%, #d4a832 70%, #b8952a 100%)', color: '#000' }}>
+        <FiTruck size={14} className="shrink-0 animate-bounce" style={{ color: '#000' }} />
         <AnimatePresence mode="wait">
           <motion.span
             key={announcementIndex}
@@ -90,12 +90,13 @@ const Header: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="truncate font-semibold tracking-widest text-gold-DEFAULT"
+            className="truncate font-semibold tracking-widest"
+            style={{ color: '#000', fontFamily: 'inherit' }}
           >
             {announcements[announcementIndex]}
           </motion.span>
         </AnimatePresence>
-        <span className="hidden md:inline-flex items-center gap-1.5 ml-4 bg-gold-DEFAULT/10 border border-gold-DEFAULT/30 text-gold-DEFAULT px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-widest">
+        <span className="hidden md:inline-flex items-center gap-1.5 ml-4 px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold" style={{ background: 'rgba(0,0,0,0.18)', color: '#000', border: '1px solid rgba(0,0,0,0.25)' }}>
           <FiShield size={10} /> Express Ghana Shipping
         </span>
       </div>
