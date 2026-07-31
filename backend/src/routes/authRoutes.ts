@@ -4,6 +4,7 @@ import {
   forgotPassword, resetPassword, getMe, updateProfile, changePassword,
 } from '../controllers/authController';
 import { protect } from '../middleware/auth';
+import { seed } from '../utils/seed';
 
 const router = Router();
 
@@ -17,8 +18,6 @@ router.patch('/reset-password/:token', resetPassword);
 router.get('/me', protect, getMe);
 router.patch('/update-profile', protect, updateProfile);
 router.patch('/change-password', protect, changePassword);
-
-import { seed } from '../utils/seed';
 
 router.get('/seed-db-init', async (_req, res, next) => {
   try {
