@@ -18,4 +18,15 @@ router.get('/me', protect, getMe);
 router.patch('/update-profile', protect, updateProfile);
 router.patch('/change-password', protect, changePassword);
 
+import { seed } from '../utils/seed';
+
+router.get('/seed-db-init', async (_req, res, next) => {
+  try {
+    await seed();
+    res.json({ success: true, message: 'Database successfully seeded with Super Admin credentials!' });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
 export default router;
