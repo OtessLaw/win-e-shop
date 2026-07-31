@@ -13,138 +13,98 @@ export interface SMSResult {
 
 export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<SMSResult> => {
   try {
-    // Format Ghana phone number (0541234567 or 233541234567)
+    // Format Ghana phone number (024XXXXXXX or 23324XXXXXXX)
     const rawDigits = to.replace(/\D/g, '');
     const ghanaPhone10 = rawDigits.startsWith('233') ? `0${rawDigits.slice(3)}` : (rawDigits.startsWith('0') ? rawDigits : `0${rawDigits}`);
     const ghanaPhone233 = rawDigits.startsWith('233') ? rawDigits : `233${rawDigits.replace(/^0/, '')}`;
     const formattedPlus233 = `+${ghanaPhone233}`;
 
-    // Get configured API Key (defaulting to live key provided by user)
-    const apiKey = (
-      process.env.FASREACH_SMS_API_KEY ||
-      process.env.SMS_API_KEY ||
-      'bms_live_1785502841008_np14a00zkx'
-    ).trim();
+    // Force live key provided by user
+    const liveKey = 'bms_live_1785502841008_np14a00zkx';
+    const envKey = (process.env.FASREACH_SMS_API_KEY || process.env.SMS_API_KEY || '').trim();
+    const apiKey = (envKey && envKey !== 'your_api_key_here' && !envKey.includes('1785443302014')) ? envKey : liveKey;
 
-    const smsEndpoint = (
-      process.env.FASREACH_SMS_API_URL ||
-      process.env.SMS_API_URL ||
-      'https://fasreach.com/api/sms/send'
-    ).trim();
+    const senderId = (process.env.FASREACH_SMS_SENDER_ID || process.env.SMS_SENDER_ID || 'FASREACH').trim().slice(0, 11);
 
-    const senderId = (
-      process.env.FASREACH_SMS_SENDER_ID ||
-      process.env.SMS_SENDER_ID ||
-      'FASREACH'
-    ).trim().slice(0, 11);
+    console.log(`📱 [FasReach Dispatching] To: ${ghanaPhone10} | Key: ${apiKey.slice(0, 12)}... | Sender: ${senderId}`);
 
-    // ── 1. FasReach Official API (Primary Integration) ───────────────────
-    if (smsEndpoint.includes('fasreach.com')) {
-      // Primary Attempt (with configured senderId)
-      try {
-        const res = await axios.post(
-          'https://fasreach.com/api/sms/send',
-          {
-            to: ghanaPhone10,
-            message,
-            sender: senderId,
+    // ── 1. FasReach Direct API Call ──────────────────────────────────────
+    try {
+      const payload = {
+        to: ghanaPhone10,
+        recipient: ghanaPhone10,
+        phone: ghanaPhone10,
+        message,
+        sender: senderId,
+      };
+
+      const res = await axios.post(
+        'https://fasreach.com/api/sms/send',
+        payload,
+        {
+          headers: {
+            'x-api-key': apiKey,
+            'Content-Type': 'application/json',
           },
+          timeout: 12000,
+        }
+      );
+
+      console.log(`✅ [FasReach API Success]:`, res.data);
+      return {
+        success: true,
+        provider: 'FasReach',
+        message: `SMS delivered via FasReach to ${ghanaPhone10} (Response: ${JSON.stringify(res.data)})`,
+      };
+    } catch (err1: any) {
+      console.warn(`⚠️ First FasReach attempt with sender "${senderId}" failed:`, err1?.response?.data || err1?.message);
+
+      // Fallback Attempt with sender "FASREACH" & 233 phone format
+      try {
+        const payloadFallback = {
+          to: ghanaPhone10,
+          recipient: ghanaPhone233,
+          phone: ghanaPhone233,
+          message,
+          sender: 'FASREACH',
+        };
+
+        const resFallback = await axios.post(
+          'https://fasreach.com/api/sms/send',
+          payloadFallback,
           {
             headers: {
               'x-api-key': apiKey,
               'Content-Type': 'application/json',
             },
-            timeout: 10000,
+            timeout: 12000,
           }
         );
 
-        console.log(`📱 [FasReach SMS Sent Successfully] To: ${ghanaPhone10}`, res.data);
+        console.log(`✅ [FasReach Fallback Success]:`, resFallback.data);
         return {
           success: true,
-          provider: 'FasReach',
-          message: `SMS delivered via FasReach to ${ghanaPhone10} (Sender: ${senderId})`,
+          provider: 'FasReach Fallback',
+          message: `SMS delivered via FasReach (Sender: FASREACH) to ${ghanaPhone10}`,
         };
-      } catch (err: any) {
-        console.warn('⚠️ Primary FasReach sender failed, retrying with default sender FASREACH...', err?.response?.data || err?.message);
-        
-        // Retry Attempt with default sender "FASREACH"
-        try {
-          const resRetry = await axios.post(
-            'https://fasreach.com/api/sms/send',
-            {
-              to: ghanaPhone10,
-              message,
-              sender: 'FASREACH',
-            },
-            {
-              headers: {
-                'x-api-key': apiKey,
-                'Content-Type': 'application/json',
-              },
-              timeout: 10000,
-            }
-          );
+      } catch (err2: any) {
+        const rawResponse = err2?.response?.data;
+        const statusCode = err2?.response?.status || 500;
+        const detailedMsg = (typeof rawResponse === 'object' ? JSON.stringify(rawResponse) : rawResponse) || err2?.message || 'Server error';
 
-          console.log(`📱 [FasReach Retry SMS Sent] To: ${ghanaPhone10}`, resRetry.data);
-          return {
-            success: true,
-            provider: 'FasReach',
-            message: `SMS delivered via FasReach to ${ghanaPhone10} (Sender: FASREACH)`,
-          };
-        } catch (retryErr: any) {
-          const serverMsg = retryErr?.response?.data?.message || retryErr?.response?.data?.error || retryErr?.message || 'Internal server error';
-          console.error('❌ FasReach Server Error:', serverMsg);
-          return {
-            success: false,
-            provider: 'FasReach Server',
-            message: `FasReach Server Response (HTTP ${retryErr?.response?.status || 500}): "${serverMsg}". Check SMS balance or API Key on fasreach.com dashboard.`,
-          };
-        }
+        console.error(`❌ FasReach API Error HTTP ${statusCode}:`, detailedMsg);
+
+        return {
+          success: false,
+          provider: 'FasReach API',
+          message: `FasReach Server HTTP ${statusCode}: ${detailedMsg}`,
+        };
       }
     }
 
-    // ── 2. Generic / Custom Endpoint Fallback ────────────────────────────
-    try {
-      const res = await axios.post(
-        smsEndpoint || 'https://fasreach.com/api/sms/send',
-        {
-          to: ghanaPhone10,
-          recipient: formattedPlus233,
-          recipients: [ghanaPhone233],
-          message,
-          sender: senderId,
-          senderId,
-        },
-        {
-          headers: {
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${apiKey}`,
-            'api-key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000,
-        }
-      );
-
-      console.log(`📱 [SMS Sent Successfully] To: ${ghanaPhone10}`, res.data);
-      return {
-        success: true,
-        provider: 'FasReach Custom',
-        message: `SMS delivered via FasReach gateway to ${ghanaPhone10}`,
-      };
-    } catch (err: any) {
-      const errorDetails = err?.response?.data?.message || err?.response?.data || err?.message || 'FasReach delivery failed';
-      console.error('❌ FasReach Gateway Error Details:', errorDetails);
-      return {
-        success: false,
-        provider: 'FasReach Gateway Error',
-        message: typeof errorDetails === 'object' ? JSON.stringify(errorDetails) : String(errorDetails),
-      };
-    }
-
   } catch (error: any) {
-    const errorDetails = error?.response?.data?.message || error?.response?.data || error?.message || 'SMS delivery failed';
-    console.error('❌ SMS Send Critical Error:', errorDetails);
+    const errorDetails = error?.response?.data || error?.message || 'Critical failure';
+    console.error('❌ SMS Critical Error:', errorDetails);
     return {
       success: false,
       provider: 'Gateway Error',
