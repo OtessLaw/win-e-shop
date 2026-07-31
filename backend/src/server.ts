@@ -120,7 +120,19 @@ app.use('/api', apiRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// ─── Start Server ─────────────────────────────────────────────────────────────
+// ─── Keep-Alive Pinger for Render Free Tier ──────────────────────────────────
+if (process.env.NODE_ENV === 'production') {
+  const https = require('https');
+  const RENDER_URL = 'https://win-e-shop.onrender.com/health';
+  setInterval(() => {
+    https.get(RENDER_URL, (res: any) => {
+      console.log(`⏰ [Render Keep-Alive Ping] Status: ${res.statusCode}`);
+    }).on('error', (err: any) => {
+      console.error('⚠️ [Keep-Alive Ping Error]:', err.message);
+    });
+  }, 10 * 60 * 1000); // 10 minutes
+}
+
 const startServer = async () => {
   server.listen(PORT, () => {
     console.log(`\n🚀 JJ Vintage Collection API & WebSockets running on port ${PORT}`);
