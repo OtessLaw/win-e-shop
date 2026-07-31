@@ -1,38 +1,38 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io, Socket } from 'socket.io-client';
-import { FiNavigation, FiMapPin, FiTruck, FiSearch, FiCompass, FiExternalLink } from 'react-icons/fi';
+import { FiNavigation, FiMapPin, FiTruck, FiSearch, FiCompass, FiExternalLink, FiCrosshair, FiTarget } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
-// Sleek Custom Leaflet Markers for Uber-Style Tracking
+// Custom Leaflet Markers
 const customerIcon = new L.DivIcon({
   className: 'custom-customer-marker',
   html: `
-    <div style="position: relative; width: 36px; height: 36px;">
-      <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; background: rgba(201, 162, 39, 0.4); animation: ping 1.8s infinite; cubic-bezier(0, 0, 0.2, 1);"></div>
-      <div style="position: relative; width: 30px; height: 30px; margin: 3px; border-radius: 50%; background: #C9A227; border: 3px solid #000; box-shadow: 0 0 15px rgba(201, 162, 39, 0.8); display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; font-size: 14px;">
+    <div style="position: relative; width: 38px; height: 38px;">
+      <div style="position: absolute; width: 38px; height: 38px; border-radius: 50%; background: rgba(201, 162, 39, 0.4); animation: ping 1.8s infinite;"></div>
+      <div style="position: relative; width: 32px; height: 32px; margin: 3px; border-radius: 50%; background: #C9A227; border: 3px solid #000; box-shadow: 0 0 15px rgba(201, 162, 39, 0.9); display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; font-size: 15px;">
         📍
       </div>
     </div>
   `,
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
+  iconSize: [38, 38],
+  iconAnchor: [19, 19],
 });
 
 const adminDriverIcon = new L.DivIcon({
   className: 'custom-driver-marker',
   html: `
-    <div style="position: relative; width: 40px; height: 40px;">
-      <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(59, 130, 246, 0.3); animation: ping 2s infinite;"></div>
-      <div style="position: relative; width: 34px; height: 34px; margin: 3px; border-radius: 50%; background: #1D4ED8; border: 3px solid #FFF; box-shadow: 0 0 15px rgba(59, 130, 246, 0.9); display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 16px;">
+    <div style="position: relative; width: 42px; height: 42px;">
+      <div style="position: absolute; width: 42px; height: 42px; border-radius: 50%; background: rgba(59, 130, 246, 0.4); animation: ping 2s infinite;"></div>
+      <div style="position: relative; width: 36px; height: 36px; margin: 3px; border-radius: 50%; background: #2563EB; border: 3px solid #FFF; box-shadow: 0 0 15px rgba(59, 130, 246, 0.9); display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 17px;">
         🏎️
       </div>
     </div>
   `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
+  iconSize: [42, 42],
+  iconAnchor: [21, 21],
 });
 
 interface LiveMapTrackerProps {
@@ -45,7 +45,6 @@ interface LiveMapTrackerProps {
   region?: string;
 }
 
-// Map Click Listener to fine-tune pinpoint coordinates
 const MapClickListener: React.FC<{ onLocationSelected: (lat: number, lng: number) => void }> = ({ onLocationSelected }) => {
   useMapEvents({
     click(e) {
@@ -55,7 +54,6 @@ const MapClickListener: React.FC<{ onLocationSelected: (lat: number, lng: number
   return null;
 };
 
-// Component to dynamically fit bounds or re-center
 const MapAutoRecenter: React.FC<{ customerCoords: [number, number]; adminCoords: [number, number] | null }> = ({
   customerCoords,
   adminCoords,
@@ -64,9 +62,9 @@ const MapAutoRecenter: React.FC<{ customerCoords: [number, number]; adminCoords:
   useEffect(() => {
     if (adminCoords) {
       const bounds = L.latLngBounds([customerCoords, adminCoords]);
-      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 19 });
     } else {
-      map.setView(customerCoords, 15);
+      map.setView(customerCoords, 17);
     }
   }, [customerCoords, adminCoords, map]);
 
@@ -75,7 +73,7 @@ const MapAutoRecenter: React.FC<{ customerCoords: [number, number]; adminCoords:
 
 export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
   orderId,
-  initialCustomerLat = 5.6037, // Default Accra
+  initialCustomerLat = 5.6037,
   initialCustomerLng = -0.1870,
   customerName,
   fullAddress,
@@ -84,34 +82,73 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
 }) => {
   const [customerCoords, setCustomerCoords] = useState<[number, number]>([initialCustomerLat, initialCustomerLng]);
   const [adminCoords, setAdminCoords] = useState<[number, number] | null>(null);
+  const [adminAccuracy, setAdminAccuracy] = useState<number | null>(null);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
-  const [distanceKm, setDistanceKm] = useState<string | null>(null);
+  
+  const [distanceText, setDistanceText] = useState<string>('Calculating...');
+  const [proximityLabel, setProximityLabel] = useState<string>('Detecting Proximity...');
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isGeocoding, setIsGeocoding] = useState(false);
-  const [locationName, setLocationName] = useState<string>('Detecting exact street location...');
+  const [locationName, setLocationName] = useState<string>('Determining exact location...');
 
-  // Calculate distance in km & ETA in minutes (avg 35 km/h urban speed)
+  // High Precision Haversine Distance Calculation (Meter level precision)
   const calculateDistanceAndEta = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Radius of earth in km
+    const R = 6371000; // Radius of Earth in METERS
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const dist = R * c;
+    const meters = R * c;
 
-    const kmStr = dist < 1 ? `${Math.round(dist * 1000)} meters` : `${dist.toFixed(2)} km`;
-    setDistanceKm(kmStr);
-
-    // Estimate ETA (assuming avg driving speed 35 km/h + 5 mins buffer)
-    const mins = Math.max(3, Math.round((dist / 35) * 60 + 5));
-    setEtaMinutes(mins);
+    if (meters < 15) {
+      setDistanceText(`${Math.round(meters)} meters`);
+      setProximityLabel('🏠 Same Room / Building');
+      setEtaMinutes(1);
+    } else if (meters < 120) {
+      setDistanceText(`${Math.round(meters)} meters`);
+      setProximityLabel('🏡 Next Door / Opposite House');
+      setEtaMinutes(2);
+    } else if (meters < 1000) {
+      setDistanceText(`${Math.round(meters)} meters`);
+      setProximityLabel('🚗 Same Neighborhood');
+      setEtaMinutes(Math.max(3, Math.round((meters / 1000 / 30) * 60)));
+    } else {
+      const km = (meters / 1000).toFixed(2);
+      setDistanceText(`${km} km`);
+      setProximityLabel('🚘 Live Delivery Route');
+      setEtaMinutes(Math.max(4, Math.round((meters / 1000 / 35) * 60 + 3)));
+    }
   }, []);
 
-  // 1. Precise OpenStreetMap Nominatim Geocoding for Customer Address
+  // Fetch Admin's Hardware Device GPS Position with High Precision
+  const fetchAdminHardwareGPS = useCallback(() => {
+    if ('geolocation' in navigator) {
+      toast.loading('🎯 Locking onto hardware GPS sensor...', { id: 'gps-lock' });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const accuracy = Math.round(pos.coords.accuracy);
+
+          setAdminCoords([lat, lng]);
+          setAdminAccuracy(accuracy);
+          calculateDistanceAndEta(lat, lng, customerCoords[0], customerCoords[1]);
+
+          toast.success(`🎯 Hardware GPS Locked! Accuracy: ±${accuracy}m`, { id: 'gps-lock' });
+        },
+        (err) => {
+          toast.error(`GPS Error: ${err.message}. Please enable location permissions.`, { id: 'gps-lock' });
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    }
+  }, [customerCoords, calculateDistanceAndEta]);
+
+  // Geocoding via Nominatim
   const geocodeAddress = useCallback(async (queryStr: string) => {
     setIsGeocoding(true);
     try {
@@ -126,13 +163,11 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
         const lon = parseFloat(data[0].lon);
         setCustomerCoords([lat, lon]);
         setLocationName(data[0].display_name);
-        toast.success(`📍 Precise location resolved: ${data[0].display_name.slice(0, 45)}...`);
+        toast.success(`📍 Precise location updated: ${data[0].display_name.slice(0, 45)}...`);
 
         if (adminCoords) {
           calculateDistanceAndEta(adminCoords[0], adminCoords[1], lat, lon);
         }
-      } else {
-        console.warn('Geocoding query returned no results for:', queryStr);
       }
     } catch (err) {
       console.error('Geocoding error:', err);
@@ -141,45 +176,28 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
     }
   }, [adminCoords, calculateDistanceAndEta]);
 
-  // Initial Auto-Geocoding on Mount if initial coords are default
+  // Initial load: Get Hardware GPS and Geocode
   useEffect(() => {
+    fetchAdminHardwareGPS();
     if (initialCustomerLat === 5.6037 && initialCustomerLng === -0.1870) {
       const searchTarget = fullAddress || `${city}, ${region}, Ghana`;
       geocodeAddress(searchTarget);
     } else {
       setCustomerCoords([initialCustomerLat, initialCustomerLng]);
     }
-  }, [initialCustomerLat, initialCustomerLng, fullAddress, city, region, geocodeAddress]);
+  }, [fetchAdminHardwareGPS, initialCustomerLat, initialCustomerLng, fullAddress, city, region, geocodeAddress]);
 
-  // 2. High-Accuracy Continuous Live GPS Tracking (watchPosition)
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      const watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setAdminCoords([lat, lng]);
-          calculateDistanceAndEta(lat, lng, customerCoords[0], customerCoords[1]);
-        },
-        (err) => console.log('Driver location watch error:', err?.message),
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-      );
-
-      return () => navigator.geolocation.clearWatch(watchId);
-    }
-  }, [customerCoords, calculateDistanceAndEta]);
-
-  // 3. Socket.io Real-Time Live Uber-Style Customer Movement Stream
+  // Socket.io Real-Time Live Uber Stream
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : 'http://localhost:5000');
     const socket: Socket = io(socketUrl, { withCredentials: true });
 
     socket.on('connect', () => {
-      console.log('⚡ [Uber Map Engine] WebSockets connected.');
+      console.log('⚡ [Uber Map Engine] WebSockets active.');
     });
 
     socket.on(`order:location:${orderId}`, (data: { latitude: number; longitude: number }) => {
-      console.log('📍 [Uber Stream Movement]:', data);
+      console.log('📍 [Uber Movement Stream]:', data);
       setCustomerCoords([data.latitude, data.longitude]);
       setIsLiveStreaming(true);
       if (adminCoords) {
@@ -192,7 +210,6 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
     };
   }, [orderId, adminCoords, calculateDistanceAndEta]);
 
-  // Turn-by-Turn Navigation Links
   const googleMapsNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${customerCoords[0]},${customerCoords[1]}`;
   const wazeNavUrl = `https://waze.com/ul?ll=${customerCoords[0]},${customerCoords[1]}&navigate=yes`;
 
@@ -202,22 +219,31 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2 text-gold-500 text-xs font-mono font-bold uppercase tracking-wider">
-          <FiTruck size={16} /> Advanced Uber-Grade Live Delivery Map Engine
+          <FiTruck size={16} /> Micro-Precision Live Location Engine
         </div>
-        <div className="flex items-center gap-2">
+        
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={fetchAdminHardwareGPS}
+            className="bg-blue-600/30 hover:bg-blue-600 text-blue-300 border border-blue-500/40 text-[10px] font-mono px-2.5 py-1 rounded flex items-center gap-1 transition-colors"
+          >
+            <FiTarget size={12} /> Re-Lock Hardware GPS
+          </button>
+
           {isLiveStreaming ? (
             <span className="flex items-center gap-1.5 text-[10px] font-mono bg-green-500/20 border border-green-500 text-green-400 px-2.5 py-1 rounded-full animate-pulse">
-              <span className="w-2 h-2 bg-green-400 rounded-full" /> LIVE UBER STREAM ACTIVE
+              <span className="w-2 h-2 bg-green-400 rounded-full" /> LIVE STREAM ACTIVE
             </span>
           ) : (
             <span className="text-[10px] font-mono bg-gold-500/10 border border-gold-500/30 text-gold-400 px-2.5 py-1 rounded-full">
-              GPS Fixed Pin
+              GPS Fixed
             </span>
           )}
         </div>
       </div>
 
-      {/* Dynamic Geocoding Search & Fine-Tune Bar */}
+      {/* Dynamic Geocoding Search Bar */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <input
@@ -229,7 +255,7 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
                 geocodeAddress(searchQuery.trim());
               }
             }}
-            placeholder="Type any landmark, digital address, or street (e.g. Spintex Road, Accra)..."
+            placeholder="Type street, landmark, or Ghana digital address (e.g. Spintex, East Legon)..."
             className="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 pl-9 text-xs text-white focus:border-gold-500 outline-none"
           />
           <FiSearch size={14} className="absolute left-3 top-2.5 text-gray-400" />
@@ -240,14 +266,14 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
           disabled={isGeocoding || !searchQuery.trim()}
           className="bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-black font-bold text-xs px-4 py-2 rounded flex items-center gap-1.5 transition-colors"
         >
-          <FiCompass size={13} /> {isGeocoding ? 'Locating...' : 'Find GPS'}
+          <FiCompass size={13} /> {isGeocoding ? 'Locating...' : 'Search'}
         </button>
       </div>
 
-      {/* Uber Metrics Bar: Distance, ETA, Target */}
+      {/* Precision Status Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-950 p-3 rounded border border-gray-900 font-mono text-xs">
         <div>
-          <span className="text-gray-500 text-[10px] block uppercase">Customer Target</span>
+          <span className="text-gray-500 text-[10px] block uppercase">Customer Destination</span>
           <span className="text-gold-400 font-bold flex items-center gap-1 text-sm truncate">
             <FiMapPin size={13} /> {customerName}
           </span>
@@ -255,87 +281,104 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
         </div>
 
         <div>
-          <span className="text-gray-500 text-[10px] block uppercase">Distance To Customer</span>
-          <span className="text-white font-bold flex items-center gap-1 text-sm">
-            <FiNavigation size={13} className="text-blue-400" /> {distanceKm || 'Calculating...'}
+          <span className="text-gray-500 text-[10px] block uppercase">Distance & Proximity</span>
+          <span className="text-white font-bold text-sm block">
+            {distanceText}
+          </span>
+          <span className="text-[10px] text-gold-400 block font-bold">
+            {proximityLabel}
           </span>
         </div>
 
         <div>
-          <span className="text-gray-500 text-[10px] block uppercase">Estimated Arrival (ETA)</span>
-          <span className="text-green-400 font-bold flex items-center gap-1 text-sm">
-            ⏱️ {etaMinutes ? `~${etaMinutes} mins` : 'Calculating...'}
+          <span className="text-gray-500 text-[10px] block uppercase">GPS Hardware Accuracy</span>
+          <span className="text-green-400 font-bold text-sm block">
+            {adminAccuracy ? `±${adminAccuracy}m Accuracy` : 'Detecting Sensor...'}
+          </span>
+          <span className="text-[10px] text-gray-400 block">
+            {etaMinutes ? `Estimated Arrival: ~${etaMinutes} mins` : ''}
           </span>
         </div>
       </div>
 
-      {/* Leaflet Map with CartoDB Dark Matter Luxury Tiles */}
+      {/* CartoDB Dark Matter Luxury Leaflet Map */}
       <div className="w-full h-88 rounded overflow-hidden border border-gold-500/30 relative shadow-2xl">
         <MapContainer
           center={customerCoords}
-          zoom={15}
+          zoom={18}
           scrollWheelZoom={true}
-          style={{ width: '100%', height: '350px', backgroundColor: '#09090b' }}
+          style={{ width: '100%', height: '370px', backgroundColor: '#09090b' }}
         >
-          {/* CartoDB Dark Matter Luxury Dark Tiles */}
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           />
 
-          {/* Map Click Event Listener */}
           <MapClickListener
             onLocationSelected={(lat, lng) => {
               setCustomerCoords([lat, lng]);
-              toast.success(`📍 Pinpoint updated to: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+              toast.success(`📍 Pinpoint placed: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
               if (adminCoords) calculateDistanceAndEta(adminCoords[0], adminCoords[1], lat, lng);
             }}
           />
 
-          {/* Customer Uber Target Marker */}
-          <Marker position={customerCoords} icon={customerIcon} draggable={true}
+          {/* Customer Location Pin */}
+          <Marker
+            position={customerCoords}
+            icon={customerIcon}
+            draggable={true}
             eventHandlers={{
               dragend: (e) => {
                 const marker = e.target;
-                const position = marker.getLatLng();
-                setCustomerCoords([position.lat, position.lng]);
-                toast.success(`📍 Custom position saved: ${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}`);
-                if (adminCoords) calculateDistanceAndEta(adminCoords[0], adminCoords[1], position.lat, position.lng);
+                const pos = marker.getLatLng();
+                setCustomerCoords([pos.lat, pos.lng]);
+                toast.success(`📍 Exact door pin saved: ${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`);
+                if (adminCoords) calculateDistanceAndEta(adminCoords[0], adminCoords[1], pos.lat, pos.lng);
               },
             }}
           >
             <Popup>
               <div className="text-xs font-sans text-black">
-                <strong>📍 {customerName} (Destination)</strong>
+                <strong>📍 {customerName} (Customer Pin)</strong>
                 <br />
-                Coordinates: {customerCoords[0].toFixed(5)}, {customerCoords[1].toFixed(5)}
+                {customerCoords[0].toFixed(6)}, {customerCoords[1].toFixed(6)}
                 <br />
-                <span className="text-[10px] text-gray-600">Drag marker to adjust exact building entrance</span>
+                <span className="text-[10px] text-gray-600">Click or drag pin to exact room/door entrance</span>
               </div>
             </Popup>
           </Marker>
 
-          {/* Admin / Driver Live Location Marker */}
+          {/* Admin Driver Location Marker + Accuracy Circle */}
           {adminCoords && (
-            <Marker position={adminCoords} icon={adminDriverIcon}>
-              <Popup>
-                <div className="text-xs font-sans text-black">
-                  <strong>🏎️ J&J Delivery Hub / Driver</strong>
-                  <br />
-                  Your Live GPS Position
-                </div>
-              </Popup>
-            </Marker>
+            <>
+              <Marker position={adminCoords} icon={adminDriverIcon}>
+                <Popup>
+                  <div className="text-xs font-sans text-black">
+                    <strong>🏎️ Your Live Hardware Location</strong>
+                    <br />
+                    Accuracy: ±{adminAccuracy || 10} meters
+                  </div>
+                </Popup>
+              </Marker>
+
+              {adminAccuracy && (
+                <Circle
+                  center={adminCoords}
+                  radius={adminAccuracy}
+                  pathOptions={{ color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.15, weight: 1 }}
+                />
+              )}
+            </>
           )}
 
-          {/* Uber-Style Glowing Route Line */}
+          {/* Uber Connecting Line */}
           {adminCoords && (
             <Polyline
               positions={[adminCoords, customerCoords]}
               color="#C9A227"
               weight={5}
               opacity={0.9}
-              dashArray="8, 10"
+              dashArray="6, 8"
             />
           )}
 
@@ -343,7 +386,7 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
         </MapContainer>
       </div>
 
-      {/* 1-Click Turn-by-Turn Navigation Action Buttons */}
+      {/* Navigation Shortcuts */}
       <div className="flex gap-3 flex-wrap pt-1">
         <a
           href={googleMapsNavUrl}
@@ -351,7 +394,7 @@ export const LiveMapTracker: React.FC<LiveMapTrackerProps> = ({
           rel="noreferrer"
           className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md flex-1 justify-center"
         >
-          <FiExternalLink size={14} /> Open Google Maps Live Navigation
+          <FiExternalLink size={14} /> Open Google Maps Navigation
         </a>
 
         <a

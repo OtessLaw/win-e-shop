@@ -43,6 +43,9 @@ export interface IOrder extends Document {
     city: string;
     address: string;
     gpsAddress?: string;
+    latitude?: number;
+    longitude?: number;
+    mapUrl?: string;
   };
   deliveryMethod: 'standard' | 'express' | 'pickup';
   deliveryFee: number;
