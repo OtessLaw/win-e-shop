@@ -40,6 +40,7 @@ export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<SMSResul
 
     // ── 1. FasReach Official API (Primary Integration) ───────────────────
     if (smsEndpoint.includes('fasreach.com')) {
+      // Primary Attempt (with configured senderId)
       try {
         const res = await axios.post(
           'https://fasreach.com/api/sms/send',
@@ -61,20 +62,42 @@ export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<SMSResul
         return {
           success: true,
           provider: 'FasReach',
-          message: `SMS delivered via FasReach to ${ghanaPhone10}`,
+          message: `SMS delivered via FasReach to ${ghanaPhone10} (Sender: ${senderId})`,
         };
       } catch (err: any) {
-        console.error('❌ FasReach Primary API Error:', err?.response?.data || err?.message || err);
-        const errMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'FasReach API Error';
+        console.warn('⚠️ Primary FasReach sender failed, retrying with default sender FASREACH...', err?.response?.data || err?.message);
         
-        // If custom key was overridden and failed, fallback to secondary attempt
-        if (smsEndpoint !== 'https://fasreach.com/api/sms/send') {
-          console.warn('Trying secondary endpoint fallback...');
-        } else {
+        // Retry Attempt with default sender "FASREACH"
+        try {
+          const resRetry = await axios.post(
+            'https://fasreach.com/api/sms/send',
+            {
+              to: ghanaPhone10,
+              message,
+              sender: 'FASREACH',
+            },
+            {
+              headers: {
+                'x-api-key': apiKey,
+                'Content-Type': 'application/json',
+              },
+              timeout: 10000,
+            }
+          );
+
+          console.log(`📱 [FasReach Retry SMS Sent] To: ${ghanaPhone10}`, resRetry.data);
+          return {
+            success: true,
+            provider: 'FasReach',
+            message: `SMS delivered via FasReach to ${ghanaPhone10} (Sender: FASREACH)`,
+          };
+        } catch (retryErr: any) {
+          const serverMsg = retryErr?.response?.data?.message || retryErr?.response?.data?.error || retryErr?.message || 'Internal server error';
+          console.error('❌ FasReach Server Error:', serverMsg);
           return {
             success: false,
-            provider: 'FasReach Error',
-            message: typeof errMsg === 'object' ? JSON.stringify(errMsg) : String(errMsg),
+            provider: 'FasReach Server',
+            message: `FasReach Server Response (HTTP ${retryErr?.response?.status || 500}): "${serverMsg}". Check SMS balance or API Key on fasreach.com dashboard.`,
           };
         }
       }
