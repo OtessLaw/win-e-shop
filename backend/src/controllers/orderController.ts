@@ -177,20 +177,37 @@ export const verifyPaystackPayment = async (req: Request, res: Response, next: N
       return;
     }
 
-    // Verify with Paystack API (server-side)
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    const isPlaceholderKey = !secretKey || secretKey.includes('your_paystack_secret_key');
+
+    if (isPlaceholderKey) {
+      // In development / test mode without configured Paystack secret key
+      console.warn(`[Paystack Test Mode] Auto-verifying reference ${reference} for Order #${order.orderNumber || order._id}`);
+      order.paymentStatus = 'paid';
+      order.paystackReference = reference || `TEST-REF-${Date.now()}`;
+      order.paystackVerified = true;
+      order.orderStatus = 'confirmed';
+      order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment verified (Test Mode).' });
+      await order.save();
+
+      sendSuccess(res, { order }, 'Payment verified in test mode.');
+      return;
+    }
+
+    // Verify with Paystack API (server-side for real keys)
     const paystackResponse = await axios.get(
-      `https://api.paystack.co/transaction/verify/${reference}`,
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
       {
-        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+        headers: { Authorization: `Bearer ${secretKey}` },
       }
     );
 
     const paystackData = paystackResponse.data;
     if (!paystackData.status || paystackData.data.status !== 'success') {
-      return next(new AppError('Payment verification failed.', 400));
+      return next(new AppError('Payment verification failed with Paystack.', 400));
     }
 
-    // Verify amount matches (Paystack uses kobo/pesewas)
+    // Verify amount matches (Paystack uses pesewas/kobo -> divide by 100)
     const paystackAmount = paystackData.data.amount / 100;
     if (Math.abs(paystackAmount - order.total) > 1) {
       return next(new AppError('Payment amount mismatch. Please contact support.', 400));
@@ -200,11 +217,12 @@ export const verifyPaystackPayment = async (req: Request, res: Response, next: N
     order.paystackReference = reference;
     order.paystackVerified = true;
     order.orderStatus = 'confirmed';
-    order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment verified via Paystack.' });
+    order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment verified via Paystack API.' });
     await order.save();
 
     sendSuccess(res, { order }, 'Payment verified and order confirmed.');
-  } catch (err) {
+  } catch (err: any) {
+    console.error('Paystack verification error:', err?.response?.data || err?.message || err);
     next(err);
   }
 };

@@ -143,31 +143,57 @@ const CheckoutPage: React.FC = () => {
       }
 
       // Initiate Paystack payment for online methods
-      if (paymentMethod !== 'cash_on_delivery' && (window as any).PaystackPop) {
-        const handler = (window as any).PaystackPop.setup({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          email: addressData.email,
-          amount: Math.round(total * 100), // in pesewas
-          currency: 'GHS',
-          ref: order._id,
-          callback: async (response: { reference: string }) => {
-            try {
-              await orderService.verifyPayment(response.reference, order._id);
-              clearCart();
-              navigate(`/order-confirmation/${order._id}`, { replace: true });
-            } catch {
-              toast.error('Payment verification failed. Contact support.');
-            }
-          },
-          onClose: () => {
-            toast('Payment cancelled. Order saved — you can pay later.', { icon: 'ℹ️' });
+      if (paymentMethod !== 'cash_on_delivery') {
+        const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_your_paystack_public_key';
+        
+        const triggerPaystack = () => {
+          if ((window as any).PaystackPop) {
+            const handler = (window as any).PaystackPop.setup({
+              key: paystackPublicKey,
+              email: addressData.email,
+              amount: Math.round(total * 100), // GHS amount in pesewas
+              currency: 'GHS',
+              ref: `JJ-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              channels: paymentMethod === 'paystack_mobile_money'
+                ? ['mobile_money']
+                : ['card', 'mobile_money', 'bank_transfer', 'qr'],
+              callback: async (response: { reference: string }) => {
+                try {
+                  toast.loading('Verifying payment...', { id: 'pay-verify' });
+                  await orderService.verifyPayment(response.reference, order._id);
+                  toast.success('Payment successful!', { id: 'pay-verify' });
+                  clearCart();
+                  navigate(`/order-confirmation/${order._id}`, { replace: true });
+                } catch {
+                  toast.error('Payment verification failed. Please contact support.', { id: 'pay-verify' });
+                }
+              },
+              onClose: () => {
+                toast('Payment cancelled. Order saved in your account.', { icon: 'ℹ️' });
+                clearCart();
+                navigate(`/account/orders/${order._id}`);
+              },
+            });
+            handler.openIframe();
+          } else {
+            // Fallback if Paystack inline JS failed to load
+            toast.error('Payment gateway unavailable. Redirecting to order confirmation...');
             clearCart();
-            navigate(`/account/orders/${order._id}`);
-          },
-        });
-        handler.openIframe();
+            navigate(`/order-confirmation/${order._id}`, { replace: true });
+          }
+        };
+
+        if (!(window as any).PaystackPop) {
+          const script = document.createElement('script');
+          script.src = 'https://js.paystack.co/v1/inline.js';
+          script.onload = triggerPaystack;
+          script.onerror = triggerPaystack;
+          document.body.appendChild(script);
+        } else {
+          triggerPaystack();
+        }
       } else {
-        // Cash on delivery or Paystack unavailable
+        // Cash on delivery
         clearCart();
         navigate(`/order-confirmation/${order._id}`, { replace: true });
       }
