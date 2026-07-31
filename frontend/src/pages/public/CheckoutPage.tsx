@@ -106,10 +106,39 @@ const CheckoutPage: React.FC = () => {
     );
   };
 
-  const handleStep1 = (data: AddressFormData) => {
+  const handleStep1 = async (data: AddressFormData) => {
+    let coords = userCoords;
+
+    if (!coords && navigator.geolocation) {
+      toast.loading('🎯 Locking onto hardware device GPS location...', { id: 'gps-lock-checkout' });
+      try {
+        coords = await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              resolve({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                mapUrl: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`,
+              });
+            },
+            () => resolve(null),
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+          );
+        });
+        if (coords) {
+          setUserCoords(coords);
+          toast.success('🎯 Customer Device GPS Locked!', { id: 'gps-lock-checkout' });
+        } else {
+          toast.dismiss('gps-lock-checkout');
+        }
+      } catch {
+        toast.dismiss('gps-lock-checkout');
+      }
+    }
+
     const fullData = {
       ...data,
-      ...(userCoords ? { latitude: userCoords.latitude, longitude: userCoords.longitude, mapUrl: userCoords.mapUrl } : {}),
+      ...(coords ? { latitude: coords.latitude, longitude: coords.longitude, mapUrl: coords.mapUrl } : {}),
     };
     setAddressData(fullData);
     setStep(2);

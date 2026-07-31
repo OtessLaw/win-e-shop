@@ -106,15 +106,10 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       tax,
       total,
       paymentMethod,
+      paymentStatus: paymentMethod === 'cash_on_delivery' ? 'pending' : 'paid',
+      orderStatus: 'confirmed',
+      statusHistory: [{ status: 'confirmed', timestamp: new Date(), note: 'Order placed and confirmed.' }],
     });
-
-    // If Cash on Delivery, mark as confirmed immediately
-    if (paymentMethod === 'cash_on_delivery') {
-      order.paymentStatus = 'pending';
-      order.orderStatus = 'confirmed';
-      order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Cash on Delivery order confirmed.' });
-      await order.save();
-    }
 
     // Update coupon usage
     if (couponDoc) {
