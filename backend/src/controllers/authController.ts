@@ -72,15 +72,14 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 // ─── Login ───────────────────────────────────────────────────────────────────
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
+    const cleanEmail = String(email || '').toLowerCase().trim();
+    const cleanPassword = String(password || '').trim();
 
-    const user = await User.findOne({ email: email?.toLowerCase()?.trim() }).select('+password').populate({
-      path: 'role',
-      populate: { path: 'permissions' },
-    });
-
+    const user = await User.findOne({ email: cleanEmail }).select('+password').populate('role');
     if (!user || !user.password) return next(new AppError('Invalid email or password.', 401));
-    const isMatch = await user.comparePassword(password);
+
+    const isMatch = await user.comparePassword(cleanPassword);
     if (!isMatch) return next(new AppError('Invalid email or password.', 401));
 
     if (user.isSuspended) return next(new AppError('Your account has been suspended. Contact support.', 403));
