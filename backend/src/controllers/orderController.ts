@@ -297,7 +297,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response, next: N
     order.statusHistory.push({ status, timestamp: new Date(), note });
     await order.save();
 
-    // Notify customer
+    // Send in-app notification to customer
     if (order.user) {
       await Notification.create({
         user: (order.user as unknown as { _id: string })._id,
@@ -308,7 +308,54 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response, next: N
       });
     }
 
-    sendSuccess(res, order, 'Order status updated.');
+    // Dispatch SMS notification to customer phone
+    try {
+      if (order.shippingAddress?.phone) {
+        await sendSMS({
+          to: order.shippingAddress.phone,
+          message: smsTemplates.orderStatusUpdate(
+            order.shippingAddress.fullName,
+            order.orderNumber,
+            status
+          ),
+        });
+      }
+    } catch (smsErr) {
+      console.error('Failed to send status update SMS:', smsErr);
+    }
+
+    sendSuccess(res, order, `Order status updated to ${status} & SMS notification dispatched.`);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: Direct Manual SMS Trigger ──────────────────────────────────────────
+export const sendOrderSMS = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id);
+    if (!order) return next(new AppError('Order not found.', 404));
+
+    if (!order.shippingAddress?.phone) {
+      return next(new AppError('Customer phone number is missing on this order.', 400));
+    }
+
+    const sent = await sendSMS({
+      to: order.shippingAddress.phone,
+      message: smsTemplates.orderPlaced(
+        order.shippingAddress.fullName,
+        order.orderNumber,
+        order.total.toFixed(2),
+        order.shippingAddress.city
+      ),
+    });
+
+    if (sent) {
+      sendSuccess(res, null, `Direct SMS receipt successfully sent to ${order.shippingAddress.phone}`);
+    } else {
+      sendSuccess(res, null, `SMS dispatched to logger for ${order.shippingAddress.phone} (configure FASREACH_SMS_API_KEY for live delivery).`);
+    }
   } catch (err) {
     next(err);
   }

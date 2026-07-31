@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import {
   createOrder, verifyPaystackPayment, getMyOrders, getOrderDetail,
-  getAllOrders, updateOrderStatus, cancelOrder, validateCoupon,
+  getAllOrders, updateOrderStatus, cancelOrder, validateCoupon, sendOrderSMS,
 } from '../controllers/orderController';
 import { protect, requirePermission, optionalAuth } from '../middleware/auth';
 
@@ -18,5 +18,6 @@ router.get('/:id', optionalAuth, getOrderDetail);
 router.get('/', protect, requirePermission('orders:view'), getAllOrders);
 router.patch('/:id/status', protect, requirePermission('orders:update'), updateOrderStatus);
 router.patch('/:id/cancel', protect, requirePermission('orders:cancel'), cancelOrder);
+router.post('/:id/send-sms', protect, requirePermission('orders:update'), sendOrderSMS);
 
 export default router;

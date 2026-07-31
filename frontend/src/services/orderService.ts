@@ -53,4 +53,9 @@ export const orderService = {
     const res = await api.patch(`/orders/${id}/cancel`, { reason });
     return res.data;
   },
+
+  sendDirectSMS: async (id: string) => {
+    const res = await api.post(`/orders/${id}/send-sms`);
+    return res.data;
+  },
 };

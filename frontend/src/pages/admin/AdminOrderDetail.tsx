@@ -53,18 +53,28 @@ const AdminOrderDetail: React.FC = () => {
 
   const currentStepIndex = STATUS_STEPS.indexOf(order.orderStatus as OrderStatus);
 
+  const sendSMSMutation = useMutation({
+    mutationFn: () => orderService.sendDirectSMS(id!),
+    onSuccess: (data: any) => {
+      toast.success(data?.message || '📱 SMS dispatched to customer!');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to dispatch SMS');
+    },
+  });
+
   const cleanPhone = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
     return digits.startsWith('0') ? `233${digits.slice(1)}` : digits;
   };
 
   const generateWhatsAppMessage = () => {
-    const text = `Hello ${order.shippingAddress.fullName}! 👋 Thank you for your order #${order.orderNumber} with JJ Vintage Collection Ghana. Your order total is ${formatCurrency(order.total)}. Status: ${order.orderStatus.toUpperCase()}. Track live: http://localhost:5173/track-order`;
+    const text = `Hello ${order.shippingAddress.fullName}! 👋 Thank you for your order #${order.orderNumber} with J&J Vintage Collection Ghana. Your order total is ${formatCurrency(order.total)}. Status: ${order.orderStatus.toUpperCase()}. Track live: https://win-e-shop.onrender.com/track-order`;
     return `https://wa.me/${cleanPhone(order.shippingAddress.phone)}?text=${encodeURIComponent(text)}`;
   };
 
   const handleSendDirectSMS = () => {
-    toast.success(`📱 SMS receipt dispatched to customer phone: ${order.shippingAddress.phone}`);
+    sendSMSMutation.mutate();
   };
 
   return (
@@ -106,9 +116,10 @@ const AdminOrderDetail: React.FC = () => {
 
             <button
               onClick={handleSendDirectSMS}
-              className="bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md"
+              disabled={sendSMSMutation.isPending}
+              className="bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-black font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md"
             >
-              <FiPhoneCall size={14} /> Resend Direct Phone SMS Receipt
+              <FiPhoneCall size={14} /> {sendSMSMutation.isPending ? 'Sending SMS...' : 'Resend Direct Phone SMS Receipt'}
             </button>
           </div>
         </div>
