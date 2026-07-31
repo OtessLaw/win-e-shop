@@ -31,7 +31,7 @@ const io = new SocketIOServer(server, {
 const PORT = process.env.PORT || 5000;
 
 // ─── Real-time Live GPS WebSockets ───────────────────────────────────────────
-io.on('connection', (socket) => {
+io.on('connection', (socket: any) => {
   console.log(`🔌 [Socket.io] Client connected: ${socket.id}`);
 
   // Customer streams live GPS location update
@@ -88,7 +88,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
+app.get('/health', (_req: express.Request, res: express.Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), env: process.env.NODE_ENV });
 });
 
