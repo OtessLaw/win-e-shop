@@ -250,6 +250,9 @@ const AdminOrderDetail: React.FC = () => {
                 initialCustomerLat={order.shippingAddress.latitude || 5.6037}
                 initialCustomerLng={order.shippingAddress.longitude || -0.1870}
                 customerName={order.shippingAddress.fullName}
+                fullAddress={`${order.shippingAddress.address}, ${order.shippingAddress.city}, ${order.shippingAddress.region}, Ghana`}
+                city={order.shippingAddress.city}
+                region={order.shippingAddress.region}
               />
             </div>
           </div>
