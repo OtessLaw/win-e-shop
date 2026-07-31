@@ -77,9 +77,15 @@ const AdminOrderDetail: React.FC = () => {
     sendSMSMutation.mutate();
   };
 
+  const generateSMSLink = () => {
+    const text = `Hi ${order.shippingAddress.fullName}, your J&J Vintage order #${order.orderNumber} (GH₵ ${order.total.toFixed(2)}) status: ${order.orderStatus.toUpperCase()}. Track: https://win-e-shop.onrender.com/track-order`;
+    const phone = order.shippingAddress.phone;
+    return `sms:${phone}?body=${encodeURIComponent(text)}`;
+  };
+
   return (
     <>
-      <Helmet><title>{`Order #${order.orderNumber} | JJ Vintage Admin`}</title></Helmet>
+      <Helmet><title>{`Order #${order.orderNumber} | J&J Vintage Admin`}</title></Helmet>
       <div className="space-y-6 text-white font-sans">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -105,21 +111,31 @@ const AdminOrderDetail: React.FC = () => {
           </div>
 
           <div className="flex gap-3 flex-wrap">
+            {/* WhatsApp */}
             <a
               href={generateWhatsAppMessage()}
               target="_blank"
               rel="noreferrer"
               className="bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md"
             >
-              <FiSend size={14} /> Send 1-Click WhatsApp Receipt
+              <FiSend size={14} /> Send via WhatsApp
             </a>
 
+            {/* Native Phone SMS App */}
+            <a
+              href={generateSMSLink()}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md"
+            >
+              <FiPhoneCall size={14} /> Open Phone SMS App (Instant Free SMS)
+            </a>
+
+            {/* Bulk Gateway SMS */}
             <button
               onClick={handleSendDirectSMS}
               disabled={sendSMSMutation.isPending}
               className="bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-black font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md"
             >
-              <FiPhoneCall size={14} /> {sendSMSMutation.isPending ? 'Sending SMS...' : 'Resend Direct Phone SMS Receipt'}
+              <FiMessageSquare size={14} /> {sendSMSMutation.isPending ? 'Sending Gateway SMS...' : 'Send Bulk Gateway SMS'}
             </button>
           </div>
         </div>
