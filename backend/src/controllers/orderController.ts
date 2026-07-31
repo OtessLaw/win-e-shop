@@ -8,7 +8,7 @@ import { Notification } from '../models/Notification';
 import { AppError } from '../utils/AppError';
 import { sendSuccess, sendPaginatedSuccess, getPaginationParams, buildPaginationResult } from '../utils/helpers';
 import { sendEmail, emailTemplates } from '../config/email';
-import { sendSMS, smsTemplates, getDynamicSMSConfig } from '../services/smsService';
+import { sendSMS, smsTemplates } from '../services/smsService';
 import { SystemSetting } from '../models/SystemSetting';
 import { AuthRequest } from '../middleware/auth';
 
@@ -418,8 +418,13 @@ export const validateCoupon = async (req: AuthRequest, res: Response, next: Next
 // ─── Admin: Get Live SMS Gateway Settings ──────────────────────────────────────
 export const getSMSSettings = async (_req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const config = await getDynamicSMSConfig();
-    sendSuccess(res, config, 'SMS Settings retrieved successfully.');
+    const apiKeyDoc = await SystemSetting.findOne({ key: { $in: ['fasreach_api_key', 'sms_api_key'] } }).lean();
+    const senderDoc = await SystemSetting.findOne({ key: 'sms_sender_id' }).lean();
+
+    sendSuccess(res, {
+      apiKey: apiKeyDoc?.value || 'bms_live_1785502841008_np14a00zkx',
+      senderId: senderDoc?.value || 'JNJVINTAGE',
+    }, 'FasReach SMS Settings retrieved successfully.');
   } catch (err) {
     next(err);
   }
@@ -428,28 +433,12 @@ export const getSMSSettings = async (_req: AuthRequest, res: Response, next: Nex
 // ─── Admin: Save Live SMS Gateway Settings ──────────────────────────────────────
 export const saveSMSSettings = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { fasreachApiKey, arkeselApiKey, mnotifyApiKey, senderId, provider, autoFailover } = req.body;
+    const { apiKey, senderId } = req.body;
 
-    if (fasreachApiKey !== undefined) {
+    if (apiKey !== undefined) {
       await SystemSetting.findOneAndUpdate(
         { key: 'fasreach_api_key' },
-        { key: 'fasreach_api_key', value: fasreachApiKey.trim(), description: 'FasReach SMS API Key' },
-        { upsert: true, new: true }
-      );
-    }
-
-    if (arkeselApiKey !== undefined) {
-      await SystemSetting.findOneAndUpdate(
-        { key: 'arkesel_api_key' },
-        { key: 'arkesel_api_key', value: arkeselApiKey.trim(), description: 'Arkesel SMS API Key' },
-        { upsert: true, new: true }
-      );
-    }
-
-    if (mnotifyApiKey !== undefined) {
-      await SystemSetting.findOneAndUpdate(
-        { key: 'mnotify_api_key' },
-        { key: 'mnotify_api_key', value: mnotifyApiKey.trim(), description: 'mNotify SMS API Key' },
+        { key: 'fasreach_api_key', value: apiKey.trim(), description: 'FasReach SMS API Key' },
         { upsert: true, new: true }
       );
     }
@@ -457,29 +446,18 @@ export const saveSMSSettings = async (req: AuthRequest, res: Response, next: Nex
     if (senderId !== undefined) {
       await SystemSetting.findOneAndUpdate(
         { key: 'sms_sender_id' },
-        { key: 'sms_sender_id', value: senderId.trim().slice(0, 11), description: 'SMS Approved Sender ID' },
+        { key: 'sms_sender_id', value: senderId.trim().slice(0, 11), description: 'FasReach Approved Sender ID' },
         { upsert: true, new: true }
       );
     }
 
-    if (provider !== undefined) {
-      await SystemSetting.findOneAndUpdate(
-        { key: 'sms_provider' },
-        { key: 'sms_provider', value: provider.trim().toLowerCase(), description: 'Primary SMS Provider' },
-        { upsert: true, new: true }
-      );
-    }
+    const apiKeyDoc = await SystemSetting.findOne({ key: { $in: ['fasreach_api_key', 'sms_api_key'] } }).lean();
+    const senderDoc = await SystemSetting.findOne({ key: 'sms_sender_id' }).lean();
 
-    if (autoFailover !== undefined) {
-      await SystemSetting.findOneAndUpdate(
-        { key: 'auto_failover' },
-        { key: 'auto_failover', value: String(autoFailover), description: 'Enable Automatic Multi-Gateway Failover' },
-        { upsert: true, new: true }
-      );
-    }
-
-    const updatedConfig = await getDynamicSMSConfig();
-    sendSuccess(res, updatedConfig, 'Multi-Gateway SMS settings saved successfully!');
+    sendSuccess(res, {
+      apiKey: apiKeyDoc?.value || 'bms_live_1785502841008_np14a00zkx',
+      senderId: senderDoc?.value || 'JNJVINTAGE',
+    }, 'FasReach SMS settings saved successfully!');
   } catch (err) {
     next(err);
   }

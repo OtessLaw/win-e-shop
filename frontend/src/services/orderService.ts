@@ -64,14 +64,7 @@ export const orderService = {
     return res.data.data;
   },
 
-  saveSMSSettings: async (data: {
-    fasreachApiKey?: string;
-    arkeselApiKey?: string;
-    mnotifyApiKey?: string;
-    senderId?: string;
-    provider?: string;
-    autoFailover?: boolean;
-  }) => {
+  saveSMSSettings: async (data: { apiKey?: string; senderId?: string }) => {
     const res = await api.post('/orders/admin/sms-settings', data);
     return res.data;
   },
