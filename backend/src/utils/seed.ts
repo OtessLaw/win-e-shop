@@ -148,10 +148,8 @@ export const seed = async (): Promise<void> => {
     console.log(`  ✅ ${CATEGORIES.length} categories seeded`);
 
     console.log('\n🎉 Seeding complete!\n');
-    process.exit(0);
   } catch (error) {
     console.error('❌ Seed failed:', error);
-    process.exit(1);
   }
 };
 
