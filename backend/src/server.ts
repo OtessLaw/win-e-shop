@@ -104,12 +104,17 @@ app.use(errorHandler);
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const startServer = async () => {
-  await connectDB();
   server.listen(PORT, () => {
     console.log(`\n🚀 JJ Vintage Collection API & WebSockets running on port ${PORT}`);
     console.log(`📍 Health: http://localhost:${PORT}/health`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}\n`);
   });
+
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error('Failed to connect to MongoDB on startup:', err);
+  }
 };
 
 startServer();
