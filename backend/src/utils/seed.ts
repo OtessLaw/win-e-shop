@@ -119,21 +119,26 @@ export const seed = async (): Promise<void> => {
     console.log('🌱 Seeding Super Admin...');
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@jjvintage.com').toLowerCase().trim();
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
-    const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
-    await User.findOneAndUpdate(
-      { email: adminEmail },
-      {
+    const adminUser = await User.findOne({ email: adminEmail });
+    if (!adminUser) {
+      await User.create({
         name: process.env.ADMIN_NAME || 'Super Admin',
         email: adminEmail,
-        password: hashedPassword,
+        password: adminPassword,
         role: roleMap['super_admin'],
         isEmailVerified: true,
         isActive: true,
         isSuspended: false,
-      },
-      { upsert: true, returnDocument: 'after' }
-    );
+      });
+    } else {
+      adminUser.password = adminPassword;
+      adminUser.role = roleMap['super_admin'];
+      adminUser.isEmailVerified = true;
+      adminUser.isActive = true;
+      adminUser.isSuspended = false;
+      await adminUser.save();
+    }
     console.log(`  ✅ Super Admin seeded/reset: ${adminEmail}`);
 
     console.log('🌱 Seeding categories...');
