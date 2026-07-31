@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
-import { FiArrowLeft, FiCheck } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiTarget, FiMapPin } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import { orderService } from '../../services/orderService';
 import { formatCurrency, formatDate, getOrderStatusLabel, getPaymentMethodLabel } from '../../utils/helpers';
 import type { OrderStatus } from '../../types';
@@ -11,12 +12,39 @@ const STATUS_STEPS: OrderStatus[] = ['pending', 'confirmed', 'packed', 'shipped'
 
 const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [gpsShared, setGpsShared] = useState(false);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['my-order', id],
     queryFn: () => orderService.getOrder(id!),
     enabled: !!id,
   });
+
+  const shareLiveGPS = useCallback(() => {
+    if (navigator.geolocation && order?._id) {
+      toast.loading('🎯 Transmitting device hardware GPS to driver...', { id: 'share-gps' });
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            await orderService.updateLocation(order._id, latitude, longitude);
+            setGpsShared(true);
+            toast.success(`🎯 Hardware Device GPS Shared! (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`, { id: 'share-gps' });
+          } catch {
+            toast.dismiss('share-gps');
+          }
+        },
+        (err) => toast.error(`GPS Error: ${err.message}`, { id: 'share-gps' }),
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    }
+  }, [order?._id]);
+
+  useEffect(() => {
+    if (order?._id) {
+      shareLiveGPS();
+    }
+  }, [order?._id, shareLiveGPS]);
 
   if (isLoading) return <div className="container-brand py-20"><div className="skeleton h-96 rounded" /></div>;
   if (!order) return <div className="container-brand py-20 text-center text-gray-400">Order not found</div>;
@@ -63,6 +91,23 @@ const OrderDetailPage: React.FC = () => {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Hardware Device GPS Share Panel */}
+              <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <FiMapPin className="text-gold-DEFAULT" size={16} />
+                  <span>
+                    {gpsShared ? '🟢 Hardware Device GPS Active & Transmitted' : '🟡 Click to send exact hardware GPS pin to driver'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={shareLiveGPS}
+                  className="bg-black hover:bg-gold-DEFAULT text-white hover:text-black font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <FiTarget size={14} /> Share Hardware Device GPS
+                </button>
               </div>
             </div>
           )}

@@ -244,15 +244,12 @@ const AdminOrderDetail: React.FC = () => {
                 {order.shippingAddress.gpsAddress && <p className="text-gray-400">Ghana Digital Address: {order.shippingAddress.gpsAddress}</p>}
               </div>
 
-              {/* Uber-Style Live Map Tracker Component */}
+              {/* Uber-Style Hardware GPS Live Map Tracker Component */}
               <LiveMapTracker
                 orderId={order._id}
                 initialCustomerLat={order.shippingAddress.latitude || 5.6037}
                 initialCustomerLng={order.shippingAddress.longitude || -0.1870}
                 customerName={order.shippingAddress.fullName}
-                fullAddress={`${order.shippingAddress.address}, ${order.shippingAddress.city}, ${order.shippingAddress.region}, Ghana`}
-                city={order.shippingAddress.city}
-                region={order.shippingAddress.region}
               />
             </div>
           </div>

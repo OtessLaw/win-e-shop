@@ -254,6 +254,30 @@ export const getOrderDetail = async (req: AuthRequest, res: Response, next: Next
   }
 };
 
+// ─── Customer: Update Live Hardware Device GPS Location ───────────────────────
+export const updateCustomerLocation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { latitude, longitude } = req.body;
+
+    if (!latitude || !longitude) {
+      return next(new AppError('Latitude and Longitude are required.', 400));
+    }
+
+    const order = await Order.findById(id);
+    if (!order) return next(new AppError('Order not found.', 404));
+
+    order.shippingAddress.latitude = Number(latitude);
+    order.shippingAddress.longitude = Number(longitude);
+    order.shippingAddress.mapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+    await order.save();
+
+    sendSuccess(res, { latitude, longitude }, 'Live customer device hardware location updated!');
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─── Admin: Get All Orders ─────────────────────────────────────────────────────
 export const getAllOrders = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {

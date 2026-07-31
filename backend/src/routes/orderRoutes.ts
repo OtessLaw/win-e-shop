@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   createOrder, verifyPaystackPayment, getMyOrders, getOrderDetail,
   getAllOrders, updateOrderStatus, cancelOrder, validateCoupon, sendOrderSMS,
-  getSMSSettings, saveSMSSettings, sendTestSMS,
+  getSMSSettings, saveSMSSettings, sendTestSMS, updateCustomerLocation,
 } from '../controllers/orderController';
 import { protect, requirePermission, optionalAuth } from '../middleware/auth';
 
@@ -19,6 +19,7 @@ router.get('/admin/sms-settings', protect, requirePermission('orders:view'), get
 router.post('/admin/sms-settings', protect, requirePermission('orders:update'), saveSMSSettings);
 router.post('/admin/send-test-sms', protect, requirePermission('orders:update'), sendTestSMS);
 
+router.post('/:id/update-location', optionalAuth, updateCustomerLocation);
 router.get('/:id', optionalAuth, getOrderDetail);
 
 // Admin routes

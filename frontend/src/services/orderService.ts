@@ -73,4 +73,9 @@ export const orderService = {
     const res = await api.post('/orders/admin/send-test-sms', { phone, message });
     return res.data;
   },
+
+  updateLocation: async (id: string, latitude: number, longitude: number) => {
+    const res = await api.post(`/orders/${id}/update-location`, { latitude, longitude });
+    return res.data;
+  },
 };
