@@ -65,7 +65,7 @@ export const getDynamicSMSConfig = async (): Promise<SMSMultiConfig> => {
 
     const primaryProvider = (configMap['sms_provider'] || 'fasreach').toLowerCase();
     const autoFailover = configMap['auto_failover'] !== 'false';
-    const smsEndpoint = (configMap['sms_endpoint'] || 'https://fasreach.com/api/sms/send').trim();
+    const smsEndpoint = (configMap['sms_endpoint'] || 'https://www.fasreach.com/api/sms/send').trim();
 
     return {
       fasreachApiKey,
@@ -84,7 +84,7 @@ export const getDynamicSMSConfig = async (): Promise<SMSMultiConfig> => {
       senderId: 'JNJVINTAGE',
       primaryProvider: 'fasreach',
       autoFailover: true,
-      smsEndpoint: 'https://fasreach.com/api/sms/send',
+      smsEndpoint: 'https://www.fasreach.com/api/sms/send',
     };
   }
 };
@@ -96,7 +96,7 @@ const sendViaFasReach = async (phone10: string, message: string, senderId: strin
   // Try primary senderId
   try {
     const res = await axios.post(
-      'https://fasreach.com/api/sms/send',
+      'https://www.fasreach.com/api/sms/send',
       { to: phone10, message, sender: senderId },
       { headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' }, timeout: 10000 }
     );
@@ -104,7 +104,7 @@ const sendViaFasReach = async (phone10: string, message: string, senderId: strin
   } catch {
     // Retry with FASREACH sender fallback
     const resFallback = await axios.post(
-      'https://fasreach.com/api/sms/send',
+      'https://www.fasreach.com/api/sms/send',
       { to: phone10, message, sender: 'FASREACH' },
       { headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' }, timeout: 10000 }
     );
