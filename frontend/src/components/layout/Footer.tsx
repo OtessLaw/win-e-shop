@@ -107,7 +107,7 @@ const Footer: React.FC = () => {
           {/* Brand */}
           <div>
             <div className="mb-6">
-              <div className="font-display font-bold text-2xl tracking-widest mb-1 text-white">JJ VINTAGE</div>
+              <div className="font-display font-bold text-2xl tracking-widest mb-1 text-white">J&J VINTAGE</div>
               <div className="text-xs tracking-widest text-gold-500 uppercase font-mono">COLLECTION GHANA</div>
             </div>
             <p className="text-gray-400 font-sans text-sm leading-relaxed mb-6">
@@ -157,7 +157,7 @@ const Footer: React.FC = () => {
             <h4 className="font-sans font-bold tracking-widest uppercase text-xs mb-6 text-gold-500">Customer Care</h4>
             <ul className="space-y-3">
               {[
-                { label: 'About JJ Vintage', path: '/about' },
+                { label: 'About J&J Vintage', path: '/about' },
                 { label: 'Contact Support', path: '/contact' },
                 { label: 'FAQ & Help', path: '/faq' },
                 { label: 'Privacy Policy', path: '/privacy' },
@@ -209,7 +209,7 @@ const Footer: React.FC = () => {
       <div className="border-t border-gray-900 bg-black py-6">
         <div className="container-brand px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-gray-500 text-xs font-sans">
-            © {new Date().getFullYear()} JJ Vintage Collection Ghana. All Rights Reserved.
+            © {new Date().getFullYear()} J&J Vintage Collection Ghana. All Rights Reserved.
           </p>
           <p className="text-gray-400 text-xs font-sans flex items-center gap-2">
             <span>Designed for Luxury Ghana Fashion</span>

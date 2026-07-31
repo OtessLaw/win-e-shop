@@ -52,11 +52,11 @@ const AdminLayout: React.FC = () => {
         <div className={`flex items-center border-b border-gold-500/20 ${collapsed ? 'justify-center p-4' : 'justify-between p-5'}`}>
           {!collapsed && (
             <div>
-              <div className="font-display font-bold text-lg tracking-widest text-white">JJ VINTAGE</div>
+              <div className="font-display font-bold text-lg tracking-widest text-white">J&J VINTAGE</div>
               <div className="text-[9px] text-gold-500 tracking-widest font-mono uppercase">Luxury Admin Panel</div>
             </div>
           )}
-          {collapsed && <div className="font-display font-bold text-gold-500 text-xl">JJ</div>}
+          {collapsed && <div className="font-display font-bold text-gold-500 text-xl">J&J</div>}
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gold-500 transition-colors"

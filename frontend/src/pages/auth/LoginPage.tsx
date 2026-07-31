@@ -67,7 +67,7 @@ const LoginPage: React.FC = () => {
           />
           <div className="relative z-10">
             <div className="mb-6">
-              <div className="font-display font-bold text-3xl tracking-widest">JJ VINTAGE</div>
+              <div className="font-display font-bold text-3xl tracking-widest">J&J VINTAGE</div>
               <div className="text-xs text-gold-500 tracking-widest">COLLECTION</div>
             </div>
             <p className="font-display text-4xl font-bold leading-tight mb-4">
@@ -95,7 +95,7 @@ const LoginPage: React.FC = () => {
             </div>
 
             <div className="lg:hidden text-center mb-8">
-              <div className="font-display font-bold text-2xl tracking-widest">JJ VINTAGE</div>
+              <div className="font-display font-bold text-2xl tracking-widest">J&J VINTAGE</div>
               <div className="text-xs text-yellow-500 tracking-widest">COLLECTION GHANA</div>
             </div>
 

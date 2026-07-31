@@ -36,7 +36,7 @@ const RegisterPage: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     try {
       await registerUser(data.name, data.email, data.password, data.phone);
-      toast.success('Account created! Welcome to JJ Vintage ✨');
+      toast.success('Account created! Welcome to J&J Vintage ✨');
       navigate('/account');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
@@ -60,7 +60,7 @@ const RegisterPage: React.FC = () => {
 
           <div className="text-center mb-8">
             <Link to="/">
-              <div className="font-display font-bold text-2xl tracking-widest">JJ VINTAGE</div>
+              <div className="font-display font-bold text-2xl tracking-widest">J&J VINTAGE</div>
               <div className="text-xs text-yellow-500 tracking-widest">COLLECTION GHANA</div>
             </Link>
           </div>

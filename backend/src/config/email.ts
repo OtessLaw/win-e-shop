@@ -30,7 +30,7 @@ export const emailTemplates = {
   welcomeEmail: (name: string, verifyUrl: string): string => `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: #000000; padding: 30px; text-align: center;">
-        <h1 style="color: #C9A227; margin: 0; font-size: 28px; letter-spacing: 3px;">JJ VINTAGE COLLECTION</h1>
+        <h1 style="color: #C9A227; margin: 0; font-size: 28px; letter-spacing: 3px;">J&J VINTAGE COLLECTION</h1>
       </div>
       <div style="padding: 40px 30px;">
         <h2 style="color: #000; font-size: 22px;">Welcome, ${name}! 🎉</h2>
@@ -47,7 +47,7 @@ export const emailTemplates = {
   passwordReset: (name: string, resetUrl: string): string => `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: #000000; padding: 30px; text-align: center;">
-        <h1 style="color: #C9A227; margin: 0; font-size: 28px; letter-spacing: 3px;">JJ VINTAGE COLLECTION</h1>
+        <h1 style="color: #C9A227; margin: 0; font-size: 28px; letter-spacing: 3px;">J&J VINTAGE COLLECTION</h1>
       </div>
       <div style="padding: 40px 30px;">
         <h2 style="color: #000; font-size: 22px;">Password Reset Request</h2>
@@ -64,7 +64,7 @@ export const emailTemplates = {
   orderConfirmation: (name: string, orderId: string, total: string): string => `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: #000000; padding: 30px; text-align: center;">
-        <h1 style="color: #C9A227; margin: 0; font-size: 28px; letter-spacing: 3px;">JJ VINTAGE COLLECTION</h1>
+        <h1 style="color: #C9A227; margin: 0; font-size: 28px; letter-spacing: 3px;">J&J VINTAGE COLLECTION</h1>
       </div>
       <div style="padding: 40px 30px;">
         <h2 style="color: #000; font-size: 22px;">Order Confirmed! ✅</h2>

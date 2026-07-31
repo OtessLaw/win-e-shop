@@ -153,7 +153,7 @@ const Header: React.FC = () => {
           {/* Logo */}
           <Link to="/" className="flex flex-col items-center group">
             <span className="font-display font-bold text-xl md:text-2xl tracking-widest text-white group-hover:text-yellow-400 transition-colors">
-              JJ VINTAGE
+              J&J VINTAGE
             </span>
             <span className="text-[9px] tracking-widest font-mono text-yellow-500 uppercase -mt-1">
               COLLECTION GHANA
@@ -368,7 +368,7 @@ const Header: React.FC = () => {
               {/* Drawer Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
                 <div>
-                  <p className="font-display font-bold text-lg tracking-widest text-white">JJ VINTAGE</p>
+                  <p className="font-display font-bold text-lg tracking-widest text-white">J&J VINTAGE</p>
                   <p className="text-[9px] tracking-widest text-yellow-400 uppercase font-mono">COLLECTION GHANA</p>
                 </div>
                 <button

@@ -432,7 +432,7 @@ const HomePage: React.FC = () => {
         <div className="container-brand">
           <div className="section-header">
             <p className="section-tag">Our Promise</p>
-            <h2 className="section-title font-display">Why Choose JJ Vintage?</h2>
+            <h2 className="section-title font-display">Why Choose J&J Vintage?</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {whyChooseUs.map(({ Icon, title, desc }, i) => (
