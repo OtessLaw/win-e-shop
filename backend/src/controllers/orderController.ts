@@ -428,12 +428,28 @@ export const getSMSSettings = async (_req: AuthRequest, res: Response, next: Nex
 // ─── Admin: Save Live SMS Gateway Settings ──────────────────────────────────────
 export const saveSMSSettings = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { apiKey, senderId, provider, smsEndpoint } = req.body;
+    const { fasreachApiKey, arkeselApiKey, mnotifyApiKey, senderId, provider, autoFailover } = req.body;
 
-    if (apiKey !== undefined) {
+    if (fasreachApiKey !== undefined) {
       await SystemSetting.findOneAndUpdate(
-        { key: 'sms_api_key' },
-        { key: 'sms_api_key', value: apiKey.trim(), description: 'SMS Gateway API Key' },
+        { key: 'fasreach_api_key' },
+        { key: 'fasreach_api_key', value: fasreachApiKey.trim(), description: 'FasReach SMS API Key' },
+        { upsert: true, new: true }
+      );
+    }
+
+    if (arkeselApiKey !== undefined) {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'arkesel_api_key' },
+        { key: 'arkesel_api_key', value: arkeselApiKey.trim(), description: 'Arkesel SMS API Key' },
+        { upsert: true, new: true }
+      );
+    }
+
+    if (mnotifyApiKey !== undefined) {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'mnotify_api_key' },
+        { key: 'mnotify_api_key', value: mnotifyApiKey.trim(), description: 'mNotify SMS API Key' },
         { upsert: true, new: true }
       );
     }
@@ -449,21 +465,21 @@ export const saveSMSSettings = async (req: AuthRequest, res: Response, next: Nex
     if (provider !== undefined) {
       await SystemSetting.findOneAndUpdate(
         { key: 'sms_provider' },
-        { key: 'sms_provider', value: provider.trim().toLowerCase(), description: 'SMS Provider' },
+        { key: 'sms_provider', value: provider.trim().toLowerCase(), description: 'Primary SMS Provider' },
         { upsert: true, new: true }
       );
     }
 
-    if (smsEndpoint !== undefined) {
+    if (autoFailover !== undefined) {
       await SystemSetting.findOneAndUpdate(
-        { key: 'sms_endpoint' },
-        { key: 'sms_endpoint', value: smsEndpoint.trim(), description: 'SMS API Endpoint URL' },
+        { key: 'auto_failover' },
+        { key: 'auto_failover', value: String(autoFailover), description: 'Enable Automatic Multi-Gateway Failover' },
         { upsert: true, new: true }
       );
     }
 
     const updatedConfig = await getDynamicSMSConfig();
-    sendSuccess(res, updatedConfig, 'SMS settings saved to database successfully!');
+    sendSuccess(res, updatedConfig, 'Multi-Gateway SMS settings saved successfully!');
   } catch (err) {
     next(err);
   }

@@ -12,10 +12,23 @@ export interface SMSResult {
   message: string;
 }
 
-export const getDynamicSMSConfig = async () => {
+export interface SMSMultiConfig {
+  fasreachApiKey: string;
+  arkeselApiKey: string;
+  mnotifyApiKey: string;
+  senderId: string;
+  primaryProvider: string;
+  autoFailover: boolean;
+  smsEndpoint: string;
+}
+
+export const getDynamicSMSConfig = async (): Promise<SMSMultiConfig> => {
   try {
     const settings = await SystemSetting.find({
-      key: { $in: ['sms_api_key', 'sms_sender_id', 'sms_provider', 'sms_endpoint'] }
+      key: { $in: [
+        'sms_api_key', 'fasreach_api_key', 'arkesel_api_key', 'mnotify_api_key',
+        'sms_sender_id', 'sms_provider', 'sms_endpoint', 'auto_failover'
+      ] }
     }).lean();
 
     const configMap: Record<string, string> = {};
@@ -23,11 +36,24 @@ export const getDynamicSMSConfig = async () => {
       configMap[s.key] = s.value;
     });
 
-    const apiKey = (
+    const fasreachApiKey = (
+      configMap['fasreach_api_key'] ||
       configMap['sms_api_key'] ||
       process.env.FASREACH_SMS_API_KEY ||
       process.env.SMS_API_KEY ||
       'bms_live_1785502841008_np14a00zkx'
+    ).trim();
+
+    const arkeselApiKey = (
+      configMap['arkesel_api_key'] ||
+      process.env.ARKESEL_API_KEY ||
+      ''
+    ).trim();
+
+    const mnotifyApiKey = (
+      configMap['mnotify_api_key'] ||
+      process.env.MNOTIFY_API_KEY ||
+      ''
     ).trim();
 
     const senderId = (
@@ -37,197 +63,152 @@ export const getDynamicSMSConfig = async () => {
       'JNJVINTAGE'
     ).trim().slice(0, 11);
 
-    const smsEndpoint = (
-      configMap['sms_endpoint'] ||
-      process.env.FASREACH_SMS_API_URL ||
-      process.env.SMS_API_URL ||
-      'https://fasreach.com/api/sms/send'
-    ).trim();
+    const primaryProvider = (configMap['sms_provider'] || 'fasreach').toLowerCase();
+    const autoFailover = configMap['auto_failover'] !== 'false';
+    const smsEndpoint = (configMap['sms_endpoint'] || 'https://fasreach.com/api/sms/send').trim();
 
-    const provider = (configMap['sms_provider'] || 'fasreach').toLowerCase();
-
-    return { apiKey, senderId, smsEndpoint, provider };
+    return {
+      fasreachApiKey,
+      arkeselApiKey,
+      mnotifyApiKey,
+      senderId,
+      primaryProvider,
+      autoFailover,
+      smsEndpoint,
+    };
   } catch {
     return {
-      apiKey: 'bms_live_1785502841008_np14a00zkx',
+      fasreachApiKey: 'bms_live_1785502841008_np14a00zkx',
+      arkeselApiKey: '',
+      mnotifyApiKey: '',
       senderId: 'JNJVINTAGE',
+      primaryProvider: 'fasreach',
+      autoFailover: true,
       smsEndpoint: 'https://fasreach.com/api/sms/send',
-      provider: 'fasreach',
     };
   }
 };
 
-export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<SMSResult> => {
+// Helper: Send via FasReach
+const sendViaFasReach = async (phone10: string, message: string, senderId: string, apiKey: string): Promise<SMSResult> => {
+  if (!apiKey) throw new Error('FasReach API Key not configured');
+  
+  // Try primary senderId
   try {
-    const rawDigits = to.replace(/\D/g, '');
-    const ghanaPhone10 = rawDigits.startsWith('233') ? `0${rawDigits.slice(3)}` : (rawDigits.startsWith('0') ? rawDigits : `0${rawDigits}`);
-    const ghanaPhone233 = rawDigits.startsWith('233') ? rawDigits : `233${rawDigits.replace(/^0/, '')}`;
-    const formattedPlus233 = `+${ghanaPhone233}`;
-
-    const { apiKey, senderId, smsEndpoint, provider } = await getDynamicSMSConfig();
-
-    console.log(`📱 [SMS Dispatching] To: ${ghanaPhone10} | Provider: ${provider} | Key: ${apiKey.slice(0, 10)}... | Sender: ${senderId}`);
-
-    if (!apiKey || apiKey === 'your_api_key_here') {
-      const msg = `No SMS API Key configured. Please enter your API Key in Admin SMS Settings.`;
-      return { success: false, provider: 'Configuration Required', message: msg };
-    }
-
-    // ── 1. FasReach Official API ─────────────────────────────────────────
-    if (provider === 'fasreach' || smsEndpoint.includes('fasreach.com')) {
-      try {
-        const res = await axios.post(
-          'https://fasreach.com/api/sms/send',
-          {
-            to: ghanaPhone10,
-            message,
-            sender: senderId,
-          },
-          {
-            headers: {
-              'x-api-key': apiKey,
-              'Content-Type': 'application/json',
-            },
-            timeout: 12000,
-          }
-        );
-
-        console.log(`✅ [FasReach API Success]:`, res.data);
-        return {
-          success: true,
-          provider: 'FasReach',
-          message: `SMS delivered via FasReach to ${ghanaPhone10} (Sender: ${senderId})`,
-        };
-      } catch (err1: any) {
-        console.warn(`⚠️ First FasReach attempt with sender "${senderId}" failed:`, err1?.response?.data || err1?.message);
-
-        // Fallback Attempt with sender "FASREACH"
-        try {
-          const resFallback = await axios.post(
-            'https://fasreach.com/api/sms/send',
-            {
-              to: ghanaPhone10,
-              message,
-              sender: 'FASREACH',
-            },
-            {
-              headers: {
-                'x-api-key': apiKey,
-                'Content-Type': 'application/json',
-              },
-              timeout: 12000,
-            }
-          );
-
-          console.log(`✅ [FasReach Fallback Success]:`, resFallback.data);
-          return {
-            success: true,
-            provider: 'FasReach Fallback',
-            message: `SMS delivered via FasReach (Sender: FASREACH) to ${ghanaPhone10}`,
-          };
-        } catch (err2: any) {
-          const rawResponse = err2?.response?.data;
-          const statusCode = err2?.response?.status || 500;
-          const detailedMsg = (typeof rawResponse === 'object' ? JSON.stringify(rawResponse) : rawResponse) || err2?.message || 'Server error';
-
-          console.error(`❌ FasReach API Error HTTP ${statusCode}:`, detailedMsg);
-          return {
-            success: false,
-            provider: 'FasReach API Error',
-            message: `FasReach Server HTTP ${statusCode}: ${detailedMsg}`,
-          };
-        }
-      }
-    }
-
-    // ── 2. Arkesel API ───────────────────────────────────────────────────
-    if (provider === 'arkesel' || smsEndpoint.includes('arkesel')) {
-      try {
-        const res = await axios.post(
-          'https://api.arkesel.com/v2/sms/send',
-          {
-            sender: senderId,
-            recipients: [ghanaPhone233],
-            message,
-          },
-          {
-            headers: {
-              'api-key': apiKey,
-              'Content-Type': 'application/json',
-            },
-            timeout: 10000,
-          }
-        );
-        return { success: true, provider: 'Arkesel', message: `SMS delivered via Arkesel to ${ghanaPhone233}` };
-      } catch (err: any) {
-        const errMsg = err?.response?.data?.message || err?.message || 'Arkesel error';
-        return { success: false, provider: 'Arkesel Error', message: String(errMsg) };
-      }
-    }
-
-    // ── 3. mNotify API ───────────────────────────────────────────────────
-    if (provider === 'mnotify' || smsEndpoint.includes('mnotify')) {
-      try {
-        const res = await axios.post(
-          `https://api.mnotify.com/api/sms/quick?key=${encodeURIComponent(apiKey)}`,
-          {
-            recipient: [ghanaPhone10],
-            sender: senderId,
-            message,
-            is_schedule: false,
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 10000,
-          }
-        );
-        return { success: true, provider: 'mNotify', message: `SMS delivered via mNotify to ${ghanaPhone10}` };
-      } catch (err: any) {
-        const errMsg = err?.response?.data?.message || err?.message || 'mNotify error';
-        return { success: false, provider: 'mNotify Error', message: String(errMsg) };
-      }
-    }
-
-    // ── 4. Custom Endpoint ───────────────────────────────────────────────
-    try {
-      const res = await axios.post(
-        smsEndpoint,
-        {
-          to: ghanaPhone10,
-          recipient: formattedPlus233,
-          phone: ghanaPhone233,
-          message,
-          sender: senderId,
-          senderId,
-        },
-        {
-          headers: {
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${apiKey}`,
-            'api-key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000,
-        }
-      );
-      return { success: true, provider: 'Custom Gateway', message: `SMS delivered via custom gateway to ${formattedPlus233}` };
-    } catch (err: any) {
-      const errMsg = err?.response?.data?.message || err?.message || 'Custom gateway error';
-      return { success: false, provider: 'Custom Gateway Error', message: String(errMsg) };
-    }
-
-  } catch (error: any) {
-    const errorDetails = error?.response?.data || error?.message || 'Critical failure';
-    console.error('❌ SMS Critical Error:', errorDetails);
-    return {
-      success: false,
-      provider: 'Gateway Error',
-      message: typeof errorDetails === 'object' ? JSON.stringify(errorDetails) : String(errorDetails),
-    };
+    const res = await axios.post(
+      'https://fasreach.com/api/sms/send',
+      { to: phone10, message, sender: senderId },
+      { headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' }, timeout: 10000 }
+    );
+    return { success: true, provider: 'FasReach', message: `SMS delivered via FasReach to ${phone10} (Sender: ${senderId})` };
+  } catch {
+    // Retry with FASREACH sender fallback
+    const resFallback = await axios.post(
+      'https://fasreach.com/api/sms/send',
+      { to: phone10, message, sender: 'FASREACH' },
+      { headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' }, timeout: 10000 }
+    );
+    return { success: true, provider: 'FasReach Fallback', message: `SMS delivered via FasReach (Sender: FASREACH) to ${phone10}` };
   }
+};
+
+// Helper: Send via Arkesel
+const sendViaArkesel = async (phone233: string, message: string, senderId: string, apiKey: string): Promise<SMSResult> => {
+  if (!apiKey) throw new Error('Arkesel API Key not configured');
+
+  const res = await axios.post(
+    'https://api.arkesel.com/v2/sms/send',
+    { sender: senderId, recipients: [phone233], message },
+    { headers: { 'api-key': apiKey, 'Content-Type': 'application/json' }, timeout: 10000 }
+  );
+
+  return { success: true, provider: 'Arkesel', message: `SMS delivered via Arkesel to ${phone233}` };
+};
+
+// Helper: Send via mNotify
+const sendViaMNotify = async (phone10: string, message: string, senderId: string, apiKey: string): Promise<SMSResult> => {
+  if (!apiKey) throw new Error('mNotify API Key not configured');
+
+  const res = await axios.post(
+    `https://api.mnotify.com/api/sms/quick?key=${encodeURIComponent(apiKey)}`,
+    { recipient: [phone10], sender: senderId, message, is_schedule: false },
+    { headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, timeout: 10000 }
+  );
+
+  return { success: true, provider: 'mNotify', message: `SMS delivered via mNotify to ${phone10}` };
+};
+
+export const sendSMS = async ({ to, message }: SendSMSOptions): Promise<SMSResult> => {
+  const rawDigits = to.replace(/\D/g, '');
+  const ghanaPhone10 = rawDigits.startsWith('233') ? `0${rawDigits.slice(3)}` : (rawDigits.startsWith('0') ? rawDigits : `0${rawDigits}`);
+  const ghanaPhone233 = rawDigits.startsWith('233') ? rawDigits : `233${rawDigits.replace(/^0/, '')}`;
+
+  const config = await getDynamicSMSConfig();
+  const errors: string[] = [];
+
+  // Attempt 1: Primary Provider
+  if (config.primaryProvider === 'arkesel') {
+    try {
+      return await sendViaArkesel(ghanaPhone233, message, config.senderId, config.arkeselApiKey);
+    } catch (e: any) {
+      errors.push(`Arkesel Primary: ${e?.response?.data?.message || e?.message}`);
+    }
+  } else if (config.primaryProvider === 'mnotify') {
+    try {
+      return await sendViaMNotify(ghanaPhone10, message, config.senderId, config.mnotifyApiKey);
+    } catch (e: any) {
+      errors.push(`mNotify Primary: ${e?.response?.data?.message || e?.message}`);
+    }
+  } else {
+    // Default FasReach
+    try {
+      return await sendViaFasReach(ghanaPhone10, message, config.senderId, config.fasreachApiKey);
+    } catch (e: any) {
+      errors.push(`FasReach Primary: ${e?.response?.data?.message || e?.message}`);
+    }
+  }
+
+  // If Primary succeeded, it returned. If it failed & Auto-Failover enabled:
+  if (config.autoFailover) {
+    // Failover Attempt 1: FasReach (if not primary)
+    if (config.primaryProvider !== 'fasreach' && config.fasreachApiKey) {
+      try {
+        const res = await sendViaFasReach(ghanaPhone10, message, config.senderId, config.fasreachApiKey);
+        res.message = `[Failover Active] ${res.message}`;
+        return res;
+      } catch (e: any) {
+        errors.push(`FasReach Failover: ${e?.response?.data?.message || e?.message}`);
+      }
+    }
+
+    // Failover Attempt 2: Arkesel (if not primary)
+    if (config.primaryProvider !== 'arkesel' && config.arkeselApiKey) {
+      try {
+        const res = await sendViaArkesel(ghanaPhone233, message, config.senderId, config.arkeselApiKey);
+        res.message = `[Failover Active] ${res.message}`;
+        return res;
+      } catch (e: any) {
+        errors.push(`Arkesel Failover: ${e?.response?.data?.message || e?.message}`);
+      }
+    }
+
+    // Failover Attempt 3: mNotify (if not primary)
+    if (config.primaryProvider !== 'mnotify' && config.mnotifyApiKey) {
+      try {
+        const res = await sendViaMNotify(ghanaPhone10, message, config.senderId, config.mnotifyApiKey);
+        res.message = `[Failover Active] ${res.message}`;
+        return res;
+      } catch (e: any) {
+        errors.push(`mNotify Failover: ${e?.response?.data?.message || e?.message}`);
+      }
+    }
+  }
+
+  return {
+    success: false,
+    provider: 'Multi-Gateway Failure',
+    message: `All SMS Gateways failed. Logs: ${errors.join(' | ')}`,
+  };
 };
 
 export const smsTemplates = {
