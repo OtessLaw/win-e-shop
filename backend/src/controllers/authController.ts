@@ -24,9 +24,11 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     const exists = await User.findOne({ email });
     if (exists) return next(new AppError('An account with this email already exists.', 400));
 
-    // Get default customer role
-    const customerRole = await Role.findOne({ name: 'customer' });
-    if (!customerRole) return next(new AppError('Role configuration error. Please contact support.', 500));
+    // Get or create default customer role
+    let customerRole = await Role.findOne({ name: 'customer' });
+    if (!customerRole) {
+      customerRole = await Role.create({ name: 'customer', label: 'Customer', isSystem: true, permissions: [] });
+    }
 
     const verifyToken = generateRandomToken();
     const hashedToken = hashToken(verifyToken);
