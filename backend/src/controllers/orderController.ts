@@ -157,7 +157,6 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
           {
             email: shippingAddress.email,
             amount: Math.round(total * 100), // Pesewas
-            currency: 'GHS',
             reference: `JJ-${order._id}-${Date.now()}`,
             callback_url: `${clientUrl}/order-confirmation/${order._id}`,
             metadata: {
