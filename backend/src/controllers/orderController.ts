@@ -84,37 +84,16 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     const timestamp = Date.now().toString(36).toUpperCase();
     const orderNumber = `JJV-${timestamp}`;
 
-    // Guarantee latitude & longitude are defined for shippingAddress
+    // Do NOT generate fake city-center coordinates from written text address.
+    // Use exact hardware device GPS coordinates if provided by customer device.
     if (!shippingAddress.latitude || !shippingAddress.longitude) {
-      try {
-        const queryStr = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.region}, Ghana`;
-        const geoRes = await axios.get(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&countrycodes=gh&limit=1`,
-          {
-            headers: { 'User-Agent': 'JJVintage-ECommerce-Backend' },
-            timeout: 4000,
-          }
-        );
-        if (geoRes.data && geoRes.data.length > 0) {
-          shippingAddress.latitude = parseFloat(geoRes.data[0].lat);
-          shippingAddress.longitude = parseFloat(geoRes.data[0].lon);
-          shippingAddress.mapUrl = `https://www.google.com/maps?q=${shippingAddress.latitude},${shippingAddress.longitude}`;
-        } else {
-          // Fallback to IP geolocation if address search returns 0 items
-          const ipRes = await axios.get('https://ipapi.co/json/', { timeout: 3000 });
-          if (ipRes.data?.latitude && ipRes.data?.longitude) {
-            shippingAddress.latitude = parseFloat(ipRes.data.latitude);
-            shippingAddress.longitude = parseFloat(ipRes.data.longitude);
-            shippingAddress.mapUrl = `https://www.google.com/maps?q=${shippingAddress.latitude},${shippingAddress.longitude}`;
-          }
-        }
-      } catch {
-        // Fallback default coordinates if external resolution fails
-        shippingAddress.latitude = 5.6037;
-        shippingAddress.longitude = -0.1870;
-        shippingAddress.mapUrl = `https://www.google.com/maps?q=5.6037,-0.1870`;
-      }
+      shippingAddress.latitude = 5.6037;
+      shippingAddress.longitude = -0.1870;
+      shippingAddress.mapUrl = `https://www.google.com/maps?q=5.6037,-0.1870`;
     }
+
+    // Initialize order (Online orders start with pending payment and pending order status)
+    const isOnlinePayment = paymentMethod !== 'cash_on_delivery';
 
     const order = await Order.create({
       orderNumber,
@@ -132,9 +111,15 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       tax,
       total,
       paymentMethod,
-      paymentStatus: paymentMethod === 'cash_on_delivery' ? 'pending' : 'paid',
-      orderStatus: 'confirmed',
-      statusHistory: [{ status: 'confirmed', timestamp: new Date(), note: 'Order placed and confirmed.' }],
+      paymentStatus: 'pending',
+      orderStatus: isOnlinePayment ? 'pending' : 'confirmed',
+      statusHistory: [
+        {
+          status: isOnlinePayment ? 'pending' : 'confirmed',
+          timestamp: new Date(),
+          note: isOnlinePayment ? 'Order placed. Awaiting Paystack payment.' : 'Cash on Delivery order confirmed.',
+        },
+      ],
     });
 
     // Update coupon usage
@@ -153,16 +138,55 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       );
     }
 
+    // Initialize Paystack Transaction for online payment methods
+    let paystackUrl: string | null = null;
+    if (isOnlinePayment) {
+      const secretKey = process.env.PAYSTACK_SECRET_KEY;
+      const clientUrl = process.env.CLIENT_URL || 'https://win-e-shop.vercel.app';
+
+      try {
+        const paystackInitRes = await axios.post(
+          'https://api.paystack.co/transaction/initialize',
+          {
+            email: shippingAddress.email,
+            amount: Math.round(total * 100), // Pesewas
+            currency: 'GHS',
+            reference: `JJ-${order._id}-${Date.now()}`,
+            callback_url: `${clientUrl}/order-confirmation/${order._id}`,
+            metadata: {
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              customerName: shippingAddress.fullName,
+              phone: shippingAddress.phone,
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${secretKey}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 10000,
+          }
+        );
+
+        if (paystackInitRes.data?.status && paystackInitRes.data?.data?.authorization_url) {
+          paystackUrl = paystackInitRes.data.data.authorization_url;
+        }
+      } catch (err: any) {
+        console.error('Paystack initialization error:', err?.response?.data || err?.message);
+      }
+    }
+
     // Send confirmation email
     try {
       await sendEmail({
         to: shippingAddress.email,
-        subject: `Order Confirmed #${order.orderNumber} — JJ Vintage Collection`,
+        subject: `Order #${order.orderNumber} Received — JJ Vintage Collection`,
         html: emailTemplates.orderConfirmation(shippingAddress.fullName, order.orderNumber, total.toFixed(2)),
       });
     } catch { /* Non-blocking */ }
 
-    // Send Automated SMS & WhatsApp Notification
+    // Send Automated SMS Notification
     try {
       await sendSMS({
         to: shippingAddress.phone,
@@ -174,14 +198,14 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     if (req.user) {
       await Notification.create({
         user: req.user.id,
-        title: 'Order Placed Successfully',
+        title: 'Order Placed',
         message: `Your order #${order.orderNumber} has been placed. Total: GHS ${total.toFixed(2)}`,
         type: 'order',
         link: `/account/orders/${order._id}`,
       });
     }
 
-    sendSuccess(res, { order }, 'Order created successfully.', 201);
+    sendSuccess(res, { order, paystackUrl }, 'Order created successfully.', 201);
   } catch (err) {
     next(err);
   }

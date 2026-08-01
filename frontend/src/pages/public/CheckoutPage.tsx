@@ -212,6 +212,13 @@ const CheckoutPage: React.FC = () => {
 
       // Initiate Paystack payment for online methods
       if (paymentMethod !== 'cash_on_delivery') {
+        if ((result as any)?.paystackUrl) {
+          clearCart();
+          toast.loading('Redirecting to Paystack Live Checkout...', { id: 'pay-redirect' });
+          window.location.href = (result as any).paystackUrl;
+          return;
+        }
+
         const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_b0d58f7e2c7d0189ad9dd4600cd53f2a074b2407';
         
         const triggerPaystack = () => {

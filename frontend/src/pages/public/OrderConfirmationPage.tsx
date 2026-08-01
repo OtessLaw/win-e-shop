@@ -1,14 +1,34 @@
-import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { FiCheck, FiShoppingBag, FiMapPin } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import { orderService } from '../../services/orderService';
 import { formatCurrency } from '../../utils/helpers';
 
 const OrderConfirmationPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
+  const [searchParams] = useSearchParams();
+  const reference = searchParams.get('reference') || searchParams.get('trxref');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (reference && orderId && !isVerifying) {
+      setIsVerifying(true);
+      toast.loading('Verifying Paystack live payment...', { id: 'verify-redirect' });
+      orderService.verifyPayment(reference, orderId)
+        .then(() => {
+          toast.success('Payment verified successfully!', { id: 'verify-redirect' });
+          queryClient.invalidateQueries({ queryKey: ['order-confirmation', orderId] });
+        })
+        .catch(() => {
+          toast.dismiss('verify-redirect');
+        });
+    }
+  }, [reference, orderId, isVerifying, queryClient]);
 
   const { data: order } = useQuery({
     queryKey: ['order-confirmation', orderId],
