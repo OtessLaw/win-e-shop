@@ -15,7 +15,7 @@ interface CreateOrderData {
 
 export const orderService = {
   createOrder: async (data: CreateOrderData) => {
-    const res = await api.post<ApiResponse<{ order: Order }>>('/orders', data);
+    const res = await api.post<ApiResponse<{ order: Order; paystackUrl?: string }>>('/orders', data);
     return res.data.data;
   },
 

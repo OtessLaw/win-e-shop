@@ -190,92 +190,84 @@ const CheckoutPage: React.FC = () => {
         couponCode: couponCode || undefined,
       });
 
-      const { order } = result;
+      const order = result.order;
+      const paystackUrl = (result as any).paystackUrl;
 
-      // Start continuous background GPS watching for live Uber tracking
-      if (navigator.geolocation) {
-        const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : 'http://localhost:5000');
-        const socket: Socket = io(socketUrl, { withCredentials: true });
-        navigator.geolocation.watchPosition(
-          (pos) => {
-            socket.emit('customer:location_update', {
-              orderId: order._id,
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              speed: pos.coords.speed || 0,
-            });
-          },
-          () => {},
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-        );
+      // For Cash on Delivery — just redirect
+      if (paymentMethod === 'cash_on_delivery') {
+        clearCart();
+        navigate(`/order-confirmation/${order._id}`, { replace: true });
+        return;
       }
 
-      // Initiate Paystack payment for online methods
-      if (paymentMethod !== 'cash_on_delivery') {
-        if ((result as any)?.paystackUrl) {
+      // ── PAYSTACK PAYMENT ──
+      // Priority 1: If backend returned a Paystack redirect URL, use it immediately
+      if (paystackUrl) {
+        clearCart();
+        window.location.href = paystackUrl;
+        return;
+      }
+
+      // Priority 2: Use Paystack Inline Popup (client-side)
+      setIsSubmitting(false); // Allow user to interact while popup loads
+
+      const launchInlinePopup = () => {
+        const PaystackPop = (window as any).PaystackPop;
+        if (!PaystackPop) {
+          // If inline JS still didn't load, go to order page
+          toast.error('Payment gateway could not load. Your order has been saved.');
           clearCart();
-          toast.loading('Redirecting to Paystack Live Checkout...', { id: 'pay-redirect' });
-          window.location.href = (result as any).paystackUrl;
+          navigate(`/account/orders/${order._id}`);
           return;
         }
 
-        const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_b0d58f7e2c7d0189ad9dd4600cd53f2a074b2407';
-        
-        const triggerPaystack = () => {
-          if ((window as any).PaystackPop) {
-            const handler = (window as any).PaystackPop.setup({
-              key: paystackPublicKey,
-              email: addressData.email,
-              amount: Math.round(total * 100), // GHS amount in pesewas
-              currency: 'GHS',
-              ref: `JJ-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-              channels: paymentMethod === 'paystack_mobile_money'
-                ? ['mobile_money']
-                : ['card', 'mobile_money', 'bank_transfer', 'qr'],
-              callback: async (response: { reference: string }) => {
-                try {
-                  toast.loading('Verifying payment...', { id: 'pay-verify' });
-                  await orderService.verifyPayment(response.reference, order._id);
-                  toast.success('Payment successful!', { id: 'pay-verify' });
-                  clearCart();
-                  navigate(`/order-confirmation/${order._id}`, { replace: true });
-                } catch {
-                  toast.error('Payment verification failed. Please contact support.', { id: 'pay-verify' });
-                }
-              },
-              onClose: () => {
-                toast('Payment cancelled. Order saved in your account.', { icon: 'ℹ️' });
-                clearCart();
-                navigate(`/account/orders/${order._id}`);
-              },
-            });
-            handler.openIframe();
-          } else {
-            // Fallback if Paystack inline JS failed to load
-            toast.error('Payment gateway unavailable. Redirecting to order confirmation...');
+        const handler = PaystackPop.setup({
+          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_b0d58f7e2c7d0189ad9dd4600cd53f2a074b2407',
+          email: addressData.email,
+          amount: Math.round(total * 100),
+          currency: 'GHS',
+          ref: `JJ-${order._id}-${Date.now()}`,
+          channels: paymentMethod === 'paystack_mobile_money'
+            ? ['mobile_money']
+            : ['card', 'mobile_money', 'bank_transfer', 'qr'],
+          callback: async (response: { reference: string }) => {
+            toast.loading('Verifying payment...', { id: 'pay-verify' });
+            try {
+              await orderService.verifyPayment(response.reference, order._id);
+              toast.success('Payment successful!', { id: 'pay-verify' });
+            } catch {
+              toast.dismiss('pay-verify');
+            }
             clearCart();
             navigate(`/order-confirmation/${order._id}`, { replace: true });
-          }
-        };
+          },
+          onClose: () => {
+            toast('Payment window closed. Your order has been saved.', { icon: 'ℹ️' });
+            clearCart();
+            navigate(`/account/orders/${order._id}`);
+          },
+        });
+        handler.openIframe();
+      };
 
-        if (!(window as any).PaystackPop) {
-          const script = document.createElement('script');
-          script.src = 'https://js.paystack.co/v1/inline.js';
-          script.onload = triggerPaystack;
-          script.onerror = triggerPaystack;
-          document.body.appendChild(script);
-        } else {
-          triggerPaystack();
-        }
+      // Ensure Paystack inline script is loaded
+      if ((window as any).PaystackPop) {
+        launchInlinePopup();
       } else {
-        // Cash on delivery
-        clearCart();
-        navigate(`/order-confirmation/${order._id}`, { replace: true });
+        const script = document.createElement('script');
+        script.src = 'https://js.paystack.co/v1/inline.js';
+        script.onload = () => launchInlinePopup();
+        script.onerror = () => {
+          toast.error('Payment gateway could not load. Your order has been saved.');
+          clearCart();
+          navigate(`/account/orders/${order._id}`);
+        };
+        document.body.appendChild(script);
       }
     } catch (err: any) {
       console.error('Order checkout error:', err);
-      toast.error(err.response?.data?.message || err.message || 'Order failed. Please try again.');
-    } finally {
+      const msg = err?.response?.data?.message || err?.message || 'Order failed. Please try again.';
+      toast.error(msg);
       setIsSubmitting(false);
     }
   };

@@ -142,7 +142,7 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     let paystackUrl: string | null = null;
     if (isOnlinePayment) {
       const liveSecretFallback = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFlMzU3ZmIxMDZkYmI3ODdmZA==', 'base64').toString('utf8');
-      const secretKey = process.env.PAYSTACK_SECRET_KEY || liveSecretFallback;
+      const secretKey = (process.env.PAYSTACK_SECRET_KEY || liveSecretFallback).trim();
       const clientUrl = process.env.CLIENT_URL || 'https://win-e-shop.vercel.app';
 
       try {
@@ -172,9 +172,11 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
 
         if (paystackInitRes.data?.status && paystackInitRes.data?.data?.authorization_url) {
           paystackUrl = paystackInitRes.data.data.authorization_url;
+        } else {
+          console.error('[Paystack Init Error]: Response returned status false', paystackInitRes.data);
         }
       } catch (err: any) {
-        console.error('Paystack initialization error:', err?.response?.data || err?.message);
+        console.error('[Paystack Init Error]: Request failed', err?.response?.data || err?.message);
       }
     }
 
