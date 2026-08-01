@@ -84,26 +84,50 @@ const CheckoutPage: React.FC = () => {
     }
   }, []);
 
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
-    }
+  const handleDetectLocation = async () => {
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    toast.loading('🎯 Detecting high-accuracy live location...', { id: 'detect-location' });
+
+    // 1. Try Hardware Geolocation Sensor
+    if (navigator.geolocation) {
+      try {
+        const pos: GeolocationPosition = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          });
+        });
         const { latitude, longitude } = pos.coords;
         const mapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
         setUserCoords({ latitude, longitude, mapUrl });
         setIsLocating(false);
-        toast.success('Live GPS coordinates captured!');
-      },
-      () => {
+        toast.success(`🎯 Hardware GPS Pinpoint Locked! (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`, { id: 'detect-location' });
+        return;
+      } catch (err) {
+        console.warn('Hardware GPS failed/denied, trying IP Geolocation fallback...', err);
+      }
+    }
+
+    // 2. Fallback to IP Geolocation API if Hardware GPS is denied or fails
+    try {
+      const res = await fetch('https://ipapi.co/json/');
+      const ipData = await res.json();
+      if (ipData && ipData.latitude && ipData.longitude) {
+        const latitude = parseFloat(ipData.latitude);
+        const longitude = parseFloat(ipData.longitude);
+        const mapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        setUserCoords({ latitude, longitude, mapUrl });
         setIsLocating(false);
-        toast.error('Unable to fetch live location. Check browser location permissions.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+        toast.success(`🌐 Location detected via IP Network (${ipData.city || 'Ghana'})!`, { id: 'detect-location' });
+        return;
+      }
+    } catch (e) {
+      console.warn('IP Geolocation failed:', e);
+    }
+
+    setIsLocating(false);
+    toast.error('Unable to auto-detect GPS coordinates. Please ensure location permissions are allowed.', { id: 'detect-location' });
   };
 
   const handleStep1 = async (data: AddressFormData) => {
@@ -342,8 +366,8 @@ const CheckoutPage: React.FC = () => {
                               <span className="font-semibold text-xs tracking-wider uppercase text-gold-DEFAULT">Pin Live Delivery Location</span>
                             </div>
                             {userCoords && (
-                              <span className="text-[10px] bg-gold-DEFAULT text-black font-bold px-2 py-0.5 rounded">
-                                GPS Captured ✓
+                              <span className="text-[10px] bg-gold-DEFAULT text-black font-bold px-2 py-0.5 rounded font-mono">
+                                GPS: {userCoords.latitude.toFixed(4)}, {userCoords.longitude.toFixed(4)} ✓
                               </span>
                             )}
                           </div>

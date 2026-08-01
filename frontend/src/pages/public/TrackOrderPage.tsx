@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
-import { FiSearch, FiCheck } from 'react-icons/fi';
+import { FiSearch, FiCheck, FiMapPin, FiTarget } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import { orderService } from '../../services/orderService';
 import { formatCurrency, formatDate, getOrderStatusLabel } from '../../utils/helpers';
 import type { OrderStatus } from '../../types';
@@ -11,6 +12,7 @@ const STATUS_STEPS: OrderStatus[] = ['pending', 'confirmed', 'packed', 'shipped'
 const TrackOrderPage: React.FC = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const [searchId, setSearchId] = useState('');
+  const [gpsShared, setGpsShared] = useState(false);
 
   const { data: order, isLoading, error } = useQuery({
     queryKey: ['track-order', searchId],
@@ -18,6 +20,32 @@ const TrackOrderPage: React.FC = () => {
     enabled: !!searchId,
     retry: false,
   });
+
+  const shareLiveGPS = useCallback(() => {
+    if (navigator.geolocation && order?._id) {
+      toast.loading('🎯 Transmitting live hardware GPS coordinates...', { id: 'share-gps-track' });
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            await orderService.updateLocation(order._id, latitude, longitude);
+            setGpsShared(true);
+            toast.success(`🎯 Live GPS Shared! (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`, { id: 'share-gps-track' });
+          } catch {
+            toast.dismiss('share-gps-track');
+          }
+        },
+        (err) => toast.error(`GPS Error: ${err.message}`, { id: 'share-gps-track' }),
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    }
+  }, [order?._id]);
+
+  useEffect(() => {
+    if (order?._id) {
+      shareLiveGPS();
+    }
+  }, [order?._id, shareLiveGPS]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +133,23 @@ const TrackOrderPage: React.FC = () => {
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Hardware Device GPS Share Panel */}
+                <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs font-mono">
+                    <FiMapPin className="text-gold-DEFAULT" size={16} />
+                    <span>
+                      {gpsShared ? '🟢 Live Hardware GPS Active & Shared with Driver' : '🟡 Click to transmit live GPS pinpoint to driver'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={shareLiveGPS}
+                    className="bg-black hover:bg-gold-DEFAULT text-white hover:text-black font-bold text-xs uppercase tracking-wider px-4 py-2 rounded transition-colors flex items-center gap-2"
+                  >
+                    <FiTarget size={14} /> Share Hardware Device GPS
+                  </button>
                 </div>
               </div>
             ) : (

@@ -6,6 +6,7 @@ interface CreateOrderData {
   shippingAddress: {
     fullName: string; phone: string; email: string;
     region: string; city: string; address: string; gpsAddress?: string;
+    latitude?: number; longitude?: number; mapUrl?: string;
   };
   deliveryMethod: 'standard' | 'express' | 'pickup';
   paymentMethod: string;

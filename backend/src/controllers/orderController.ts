@@ -90,6 +90,38 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     const timestamp = Date.now().toString(36).toUpperCase();
     const orderNumber = `JJV-${timestamp}`;
 
+    // Guarantee latitude & longitude are defined for shippingAddress
+    if (!shippingAddress.latitude || !shippingAddress.longitude) {
+      try {
+        const queryStr = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.region}, Ghana`;
+        const geoRes = await axios.get(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&countrycodes=gh&limit=1`,
+          {
+            headers: { 'User-Agent': 'JJVintage-ECommerce-Backend' },
+            timeout: 4000,
+          }
+        );
+        if (geoRes.data && geoRes.data.length > 0) {
+          shippingAddress.latitude = parseFloat(geoRes.data[0].lat);
+          shippingAddress.longitude = parseFloat(geoRes.data[0].lon);
+          shippingAddress.mapUrl = `https://www.google.com/maps?q=${shippingAddress.latitude},${shippingAddress.longitude}`;
+        } else {
+          // Fallback to IP geolocation if address search returns 0 items
+          const ipRes = await axios.get('https://ipapi.co/json/', { timeout: 3000 });
+          if (ipRes.data?.latitude && ipRes.data?.longitude) {
+            shippingAddress.latitude = parseFloat(ipRes.data.latitude);
+            shippingAddress.longitude = parseFloat(ipRes.data.longitude);
+            shippingAddress.mapUrl = `https://www.google.com/maps?q=${shippingAddress.latitude},${shippingAddress.longitude}`;
+          }
+        }
+      } catch {
+        // Fallback default coordinates if external resolution fails
+        shippingAddress.latitude = 5.6037;
+        shippingAddress.longitude = -0.1870;
+        shippingAddress.mapUrl = `https://www.google.com/maps?q=5.6037,-0.1870`;
+      }
+    }
+
     const order = await Order.create({
       orderNumber,
       user: req.user?.id,
