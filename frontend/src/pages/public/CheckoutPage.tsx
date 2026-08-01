@@ -212,7 +212,7 @@ const CheckoutPage: React.FC = () => {
 
       // Initiate Paystack payment for online methods
       if (paymentMethod !== 'cash_on_delivery') {
-        const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_your_paystack_public_key';
+        const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_b0d58f7e2c7d0189ad9dd4600cd53f2a074b2407';
         
         const triggerPaystack = () => {
           if ((window as any).PaystackPop) {
@@ -266,7 +266,8 @@ const CheckoutPage: React.FC = () => {
         navigate(`/order-confirmation/${order._id}`, { replace: true });
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Order failed. Please try again.');
+      console.error('Order checkout error:', err);
+      toast.error(err.response?.data?.message || err.message || 'Order failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
