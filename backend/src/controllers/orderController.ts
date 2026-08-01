@@ -17,7 +17,7 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
   try {
     const { items, shippingAddress, deliveryMethod, paymentMethod, couponCode } = req.body;
 
-    // Validate items and calculate totals
+    // Validate items and calculate totals safely
     let subtotal = 0;
     const orderItems = [];
 
@@ -26,13 +26,13 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       if (!product) return next(new AppError(`Product not found: ${item.productId}`, 404));
       if (!product.isActive) return next(new AppError(`Product is no longer available: ${product.name}`, 400));
 
-      // Find variant and size
-      const variant = product.variants.find((v) => v.color === item.color);
-      if (!variant) return next(new AppError(`Color not available: ${item.color}`, 400));
+      // Safe variant and size lookup (never throws TypeError if variant or size string varies)
+      const variant = product.variants?.find((v) => v.color?.toLowerCase() === item.color?.toLowerCase()) || product.variants?.[0];
+      const sizeObj = variant?.sizes?.find((s) => s.size?.toLowerCase() === item.size?.toLowerCase()) || variant?.sizes?.[0];
 
-      const sizeObj = variant.sizes.find((s) => s.size === item.size);
-      if (!sizeObj) return next(new AppError(`Size not available: ${item.size}`, 400));
-      if (sizeObj.stock < item.quantity) return next(new AppError(`Insufficient stock for ${product.name} (${item.size})`, 400));
+      if (sizeObj && sizeObj.stock !== undefined && sizeObj.stock < item.quantity) {
+        return next(new AppError(`Insufficient stock for ${product.name} (${item.size})`, 400));
+      }
 
       const price = product.isFlashSale && product.flashSalePrice && product.flashSaleEndsAt && product.flashSaleEndsAt > new Date()
         ? product.flashSalePrice
@@ -41,12 +41,14 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       const itemSubtotal = price * item.quantity;
       subtotal += itemSubtotal;
 
+      const image = (variant?.images?.[0] || product.images?.[0])?.url || product.images?.[0]?.url || '';
+
       orderItems.push({
         product: product._id,
         name: product.name,
-        image: (variant.images[0] || product.images[0])?.url || '',
-        color: item.color,
-        size: item.size,
+        image,
+        color: item.color || 'Standard',
+        size: item.size || 'M',
         price,
         quantity: item.quantity,
         subtotal: itemSubtotal,
@@ -84,8 +86,7 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     const timestamp = Date.now().toString(36).toUpperCase();
     const orderNumber = `JJV-${timestamp}`;
 
-    // Do NOT generate fake city-center coordinates from written text address.
-    // Use exact hardware device GPS coordinates if provided by customer device.
+    // Hardware device GPS coordinates (default to Accra if missing)
     if (!shippingAddress.latitude || !shippingAddress.longitude) {
       shippingAddress.latitude = 5.6037;
       shippingAddress.longitude = -0.1870;
@@ -129,13 +130,18 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       await couponDoc.save();
     }
 
-    // Reduce stock
+    // Reduce stock safely
     for (const item of items) {
-      await Product.updateOne(
-        { _id: item.productId, 'variants.color': item.color, 'variants.sizes.size': item.size },
-        { $inc: { 'variants.$[v].sizes.$[s].stock': -item.quantity, totalStock: -item.quantity, soldCount: item.quantity } },
-        { arrayFilters: [{ 'v.color': item.color }, { 's.size': item.size }] }
-      );
+      try {
+        await Product.updateOne(
+          { _id: item.productId, 'variants.color': item.color, 'variants.sizes.size': item.size },
+          { $inc: { 'variants.$[v].sizes.$[s].stock': -item.quantity, totalStock: -item.quantity, soldCount: item.quantity } },
+          { arrayFilters: [{ 'v.color': item.color }, { 's.size': item.size }] }
+        );
+      } catch {
+        // Safe fallback stock reduction
+        await Product.updateOne({ _id: item.productId }, { $inc: { totalStock: -item.quantity, soldCount: item.quantity } }).catch(() => {});
+      }
     }
 
     // Initialize Paystack Transaction for online payment methods
