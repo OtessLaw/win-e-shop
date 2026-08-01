@@ -146,6 +146,7 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
 
     // Initialize Paystack Transaction for online payment methods
     let paystackUrl: string | null = null;
+    let paystackError: any = null;
     if (isOnlinePayment) {
       const liveSecretFallback = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFlMzU3ZmIxMDZkYmI3ODdmZA==', 'base64').toString('utf8');
       const envKey = process.env.PAYSTACK_SECRET_KEY?.trim() || '';
@@ -179,10 +180,12 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
         if (paystackInitRes.data?.status && paystackInitRes.data?.data?.authorization_url) {
           paystackUrl = paystackInitRes.data.data.authorization_url;
         } else {
+          paystackError = paystackInitRes.data;
           console.error('[Paystack Init Error]: Response returned status false', paystackInitRes.data);
         }
       } catch (err: any) {
-        console.error('[Paystack Init Error]: Request failed', err?.response?.data || err?.message);
+        paystackError = err?.response?.data || err?.message;
+        console.error('[Paystack Init Error]: Request failed', paystackError);
       }
     }
 
@@ -214,7 +217,7 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       });
     }
 
-    sendSuccess(res, { order, paystackUrl }, 'Order created successfully.', 201);
+    sendSuccess(res, { order, paystackUrl, paystackError }, 'Order created successfully.', 201);
   } catch (err) {
     next(err);
   }
