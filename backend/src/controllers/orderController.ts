@@ -148,7 +148,8 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     let paystackUrl: string | null = null;
     if (isOnlinePayment) {
       const liveSecretFallback = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFlMzU3ZmIxMDZkYmI3ODdmZA==', 'base64').toString('utf8');
-      const secretKey = (process.env.PAYSTACK_SECRET_KEY || liveSecretFallback).trim();
+      const envKey = process.env.PAYSTACK_SECRET_KEY?.trim() || '';
+      const secretKey = (envKey && envKey.startsWith('sk_')) ? envKey : liveSecretFallback;
       const clientUrl = process.env.CLIENT_URL || 'https://win-e-shop.vercel.app';
 
       try {
@@ -232,8 +233,9 @@ export const verifyPaystackPayment = async (req: Request, res: Response, next: N
     }
 
     const liveSecretFallback = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFlMzU3ZmIxMDZkYmI3ODdmZA==', 'base64').toString('utf8');
-    const secretKey = (process.env.PAYSTACK_SECRET_KEY || liveSecretFallback).trim();
-    const isPlaceholderKey = !secretKey || secretKey.includes('your_paystack_secret_key');
+    const envKey = process.env.PAYSTACK_SECRET_KEY?.trim() || '';
+    const secretKey = (envKey && envKey.startsWith('sk_')) ? envKey : liveSecretFallback;
+    const isPlaceholderKey = false; // Never use placeholder logic if we have a valid fallback
 
     if (isPlaceholderKey) {
       // In development / test mode without configured Paystack secret key
