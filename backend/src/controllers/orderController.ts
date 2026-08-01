@@ -76,16 +76,10 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       }
     }
 
-    // Delivery fee
-    const deliveryFees: Record<string, number> = {
-      standard: 20,
-      express: 50,
-      pickup: 0,
-    };
-    const deliveryFee = deliveryFees[deliveryMethod] || 20;
-
+    // Delivery fee is 0 on site (paid directly to delivery driver on arrival)
+    const deliveryFee = 0;
     const tax = 0; // Can be configured
-    const total = Math.max(0, subtotal - discount + deliveryFee + tax);
+    const total = Math.max(0, subtotal - discount + tax);
 
     const timestamp = Date.now().toString(36).toUpperCase();
     const orderNumber = `JJV-${timestamp}`;

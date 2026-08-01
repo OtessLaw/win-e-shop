@@ -54,8 +54,8 @@ const CheckoutPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addressData, setAddressData] = useState<AddressFormData | null>(null);
 
-  const deliveryFee = deliveryMethod === 'express' ? 40 : deliveryMethod === 'pickup' ? 0 : subtotal >= 200 ? 0 : 20;
-  const total = subtotal - discount + deliveryFee;
+  const deliveryFee = 0; // Delivery fee is paid directly to rider on arrival
+  const total = Math.max(0, subtotal - discount);
 
   const { register, handleSubmit, formState: { errors } } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -390,14 +390,14 @@ const CheckoutPage: React.FC = () => {
                           <label className="input-label">Delivery Method</label>
                           <div className="grid grid-cols-3 gap-3 mt-2">
                             {[
-                              { id: 'standard', label: 'Standard', price: subtotal >= 200 ? 'Free' : 'GHS 20', days: '3-5 days' },
-                              { id: 'express', label: 'Express', price: 'GHS 40', days: '1-2 days' },
-                              { id: 'pickup', label: 'Pickup', price: 'Free', days: 'Same day' },
+                              { id: 'standard', label: 'Standard Delivery', price: 'Pay Driver on Arrival', days: '3-5 days' },
+                              { id: 'express', label: 'Express Delivery', price: 'Pay Driver on Arrival', days: '1-2 days' },
+                              { id: 'pickup', label: 'Store Pickup', price: 'Free', days: 'Same day' },
                             ].map(({ id, label, price, days }) => (
                               <label key={id} className={`border p-3 cursor-pointer transition-all ${deliveryMethod === id ? 'border-black bg-black/5' : 'border-gray-200 hover:border-gray-400'}`}>
                                 <input type="radio" name="delivery" value={id} checked={deliveryMethod === id as any} onChange={() => setDeliveryMethod(id as any)} className="hidden" />
                                 <p className="font-medium text-sm">{label}</p>
-                                <p className="text-xs text-gold-DEFAULT font-medium">{price}</p>
+                                <p className="text-[11px] text-gold-DEFAULT font-semibold">{price}</p>
                                 <p className="text-xs text-gray-400">{days}</p>
                               </label>
                             ))}
@@ -521,7 +521,7 @@ const CheckoutPage: React.FC = () => {
                 </div>
                 <div className="space-y-2 text-sm border-t border-gray-100 pt-4">
                   <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Delivery</span><span>{deliveryFee === 0 ? 'Free' : formatCurrency(deliveryFee)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Delivery Fee</span><span className="text-gold-DEFAULT font-medium text-xs">{deliveryMethod === 'pickup' ? 'Free (Pickup)' : 'Pay Driver on Arrival'}</span></div>
                   {discount > 0 && <div className="flex justify-between text-green-600"><span>Discount</span><span>-{formatCurrency(discount)}</span></div>}
                   <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-100">
                     <span>Total</span><span>{formatCurrency(total)}</span>

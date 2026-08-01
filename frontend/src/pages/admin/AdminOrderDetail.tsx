@@ -260,7 +260,7 @@ const AdminOrderDetail: React.FC = () => {
               <h2 className="font-sans font-bold text-gold-500 text-xs uppercase tracking-wider mb-4">Price Breakdown</h2>
               <div className="space-y-2 text-xs font-mono">
                 <div className="flex justify-between text-gray-400"><span>Subtotal</span><span>{formatCurrency(order.subtotal)}</span></div>
-                <div className="flex justify-between text-gray-400"><span>Delivery Fee</span><span>{formatCurrency(order.deliveryFee)}</span></div>
+                <div className="flex justify-between text-gray-400"><span>Delivery Fee</span><span className="text-gold-400">{order.deliveryFee === 0 ? 'Pay Driver on Arrival' : formatCurrency(order.deliveryFee)}</span></div>
                 {order.discount > 0 && <div className="flex justify-between text-gold-400"><span>Discount Applied</span><span>-{formatCurrency(order.discount)}</span></div>}
                 <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-900 text-white">
                   <span>Total Paid / Due</span><span className="text-gold-500">{formatCurrency(order.total)}</span>

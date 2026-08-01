@@ -154,19 +154,14 @@ const CartPage: React.FC = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Delivery</span>
-                    <span className={deliveryFee === 0 ? 'text-green-600 font-medium' : ''}>
-                      {deliveryFee === 0 ? 'FREE' : formatCurrency(deliveryFee)}
-                    </span>
+                    <span className="text-gray-500">Delivery Fee</span>
+                    <span className="text-gold-DEFAULT font-medium text-xs">Pay Driver on Arrival</span>
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount</span>
                       <span>-{formatCurrency(discount)}</span>
                     </div>
-                  )}
-                  {subtotal < 200 && (
-                    <p className="text-xs text-gray-400">Add {formatCurrency(200 - subtotal)} more for free delivery!</p>
                   )}
                   <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-base">
                     <span>Total</span>
