@@ -232,7 +232,7 @@ export const verifyPaystackPayment = async (req: Request, res: Response, next: N
     }
 
     const liveSecretFallback = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFlMzU3ZmIxMDZkYmI3ODdmZA==', 'base64').toString('utf8');
-    const secretKey = process.env.PAYSTACK_SECRET_KEY || liveSecretFallback;
+    const secretKey = (process.env.PAYSTACK_SECRET_KEY || liveSecretFallback).trim();
     const isPlaceholderKey = !secretKey || secretKey.includes('your_paystack_secret_key');
 
     if (isPlaceholderKey) {
