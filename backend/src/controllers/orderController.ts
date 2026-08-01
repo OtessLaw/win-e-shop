@@ -189,22 +189,18 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       }
     }
 
-    // Send confirmation email
-    try {
-      await sendEmail({
-        to: shippingAddress.email,
-        subject: `Order #${order.orderNumber} Received — JJ Vintage Collection`,
-        html: emailTemplates.orderConfirmation(shippingAddress.fullName, order.orderNumber, total.toFixed(2)),
-      });
-    } catch { /* Non-blocking */ }
+    // Send confirmation email (fire-and-forget)
+    sendEmail({
+      to: shippingAddress.email,
+      subject: `Order #${order.orderNumber} Received — JJ Vintage Collection`,
+      html: emailTemplates.orderConfirmation(shippingAddress.fullName, order.orderNumber, total.toFixed(2)),
+    }).catch(err => console.error('[Email Error]:', err));
 
-    // Send Automated SMS Notification
-    try {
-      await sendSMS({
-        to: shippingAddress.phone,
-        message: smsTemplates.orderPlaced(shippingAddress.fullName, order.orderNumber, total.toFixed(2), shippingAddress.city),
-      });
-    } catch { /* Non-blocking */ }
+    // Send Automated SMS Notification (fire-and-forget)
+    sendSMS({
+      to: shippingAddress.phone,
+      message: smsTemplates.orderPlaced(shippingAddress.fullName, order.orderNumber, total.toFixed(2), shippingAddress.city),
+    }).catch(err => console.error('[SMS Error]:', err));
 
     // Create notification for user
     if (req.user) {
