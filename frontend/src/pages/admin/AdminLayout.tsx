@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers, FiTag, FiImage,
   FiBarChart2, FiFileText, FiShield, FiChevronLeft, FiLogOut,
-  FiExternalLink,
+  FiExternalLink, FiSliders,
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import ScrollToTop from '../../components/layout/ScrollToTop';
@@ -20,6 +20,7 @@ const navItems = [
   { path: '/admin/analytics', label: 'Analytics', Icon: FiBarChart2 },
   { path: '/admin/content', label: 'Content', Icon: FiFileText },
   { path: '/admin/roles', label: 'Roles & Permissions', Icon: FiShield },
+  { path: '/admin/settings', label: 'Paystack & Gateway Settings', Icon: FiSliders },
 ];
 
 const AdminLayout: React.FC = () => {

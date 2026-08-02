@@ -49,6 +49,7 @@ const AdminCoupons = lazy(() => import('../pages/admin/AdminCoupons'));
 const AdminBanners = lazy(() => import('../pages/admin/AdminBanners'));
 const AdminAnalytics = lazy(() => import('../pages/admin/AdminAnalytics'));
 const AdminContent = lazy(() => import('../pages/admin/AdminContent'));
+const AdminSettings = lazy(() => import('../pages/admin/AdminSettings'));
 
 // Loading fallback
 const PageLoader = () => (
@@ -163,6 +164,7 @@ const router = createBrowserRouter([
       { path: 'banners', element: <Suspense fallback={<PageLoader />}><AdminBanners /></Suspense> },
       { path: 'analytics', element: <Suspense fallback={<PageLoader />}><AdminAnalytics /></Suspense> },
       { path: 'content', element: <Suspense fallback={<PageLoader />}><AdminContent /></Suspense> },
+      { path: 'settings', element: <Suspense fallback={<PageLoader />}><AdminSettings /></Suspense> },
     ],
   },
 ]);
