@@ -266,7 +266,14 @@ const CheckoutPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Order checkout error:', err);
-      const msg = err?.response?.data?.message || err?.message || 'Order failed. Please try again.';
+      let msg = 'Order failed. Please try again.';
+      if (err?.response?.data?.message) {
+        msg = err.response.data.message;
+      } else if (err?.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        msg = err.response.data.errors.join(', ');
+      } else if (err?.message) {
+        msg = err.message;
+      }
       toast.error(msg);
       setIsSubmitting(false);
     }
