@@ -57,6 +57,11 @@ const CheckoutPage: React.FC = () => {
   const deliveryFee = 0; // Delivery fee is paid directly to rider on arrival
   const total = Math.max(0, subtotal - discount);
 
+  // Pre-warm backend server on mount so Render cold-starts don't delay checkout
+  useEffect(() => {
+    api.get('/health').catch(() => {});
+  }, []);
+
   const { register, handleSubmit, formState: { errors } } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
     defaultValues: {

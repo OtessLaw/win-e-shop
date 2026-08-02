@@ -107,7 +107,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/health', (_req: express.Request, res: express.Response) => {
+app.get(['/health', '/api/health'], (_req: express.Request, res: express.Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), env: process.env.NODE_ENV });
 });
 
