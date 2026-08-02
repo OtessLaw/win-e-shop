@@ -147,7 +147,11 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     // Initialize Paystack Transaction for online payment methods
     let paystackUrl: string | null = null;
     if (isOnlinePayment) {
-      const secretKey = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFmMWUzNTdmYjEwNmRiYjc4N2Zk', 'base64').toString('utf8');
+      const dbSecretKeyDoc = await SystemSetting.findOne({ key: 'paystack_secret_key' }).lean();
+      const fallbackKey = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFmMWUzNTdmYjEwNmRiYjc4N2Zk', 'base64').toString('utf8');
+      const secretKey = (dbSecretKeyDoc?.value?.trim() && dbSecretKeyDoc.value.trim().startsWith('sk_'))
+        ? dbSecretKeyDoc.value.trim()
+        : fallbackKey;
       const clientUrl = process.env.CLIENT_URL || 'https://win-e-shop.vercel.app';
 
       try {
@@ -226,7 +230,11 @@ export const verifyPaystackPayment = async (req: Request, res: Response, next: N
       return;
     }
 
-    const secretKey = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFmMWUzNTdmYjEwNmRiYjc4N2Zk', 'base64').toString('utf8');
+    const dbSecretKeyDoc = await SystemSetting.findOne({ key: 'paystack_secret_key' }).lean();
+    const fallbackKey = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFmMWUzNTdmYjEwNmRiYjc4N2Zk', 'base64').toString('utf8');
+    const secretKey = (dbSecretKeyDoc?.value?.trim() && dbSecretKeyDoc.value.trim().startsWith('sk_'))
+      ? dbSecretKeyDoc.value.trim()
+      : fallbackKey;
     const isPlaceholderKey = false; // Never use placeholder logic if we have a valid fallback
 
     if (isPlaceholderKey) {
@@ -497,6 +505,56 @@ export const getSMSSettings = async (_req: AuthRequest, res: Response, next: Nex
       apiKey: apiKeyDoc?.value || 'bms_live_1785502841008_np14a00zkx',
       senderId: senderDoc?.value || 'JNJVINTAGE',
     }, 'FasReach SMS Settings retrieved successfully.');
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: Get Paystack Payment Gateway Settings ──────────────────────────────
+export const getPaymentSettings = async (_req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const secretKeyDoc = await SystemSetting.findOne({ key: 'paystack_secret_key' }).lean();
+    const publicKeyDoc = await SystemSetting.findOne({ key: 'paystack_public_key' }).lean();
+    const fallbackSecret = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFmMWUzNTdmYjEwNmRiYjc4N2Zk', 'base64').toString('utf8');
+
+    sendSuccess(res, {
+      paystackSecretKey: secretKeyDoc?.value || fallbackSecret,
+      paystackPublicKey: publicKeyDoc?.value || 'pk_live_b0d58f7e2c7d0189ad9dd4600cd53f2a074b2407',
+    }, 'Payment gateway settings fetched.');
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Admin: Save Paystack Payment Gateway Settings ──────────────────────────────
+export const savePaymentSettings = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { paystackSecretKey, paystackPublicKey } = req.body;
+
+    if (paystackSecretKey !== undefined && paystackSecretKey.trim() !== '') {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'paystack_secret_key' },
+        { key: 'paystack_secret_key', value: paystackSecretKey.trim(), description: 'Paystack Secret API Key' },
+        { upsert: true, new: true }
+      );
+    }
+
+    if (paystackPublicKey !== undefined && paystackPublicKey.trim() !== '') {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'paystack_public_key' },
+        { key: 'paystack_public_key', value: paystackPublicKey.trim(), description: 'Paystack Public API Key' },
+        { upsert: true, new: true }
+      );
+    }
+
+    const secretKeyDoc = await SystemSetting.findOne({ key: 'paystack_secret_key' }).lean();
+    const publicKeyDoc = await SystemSetting.findOne({ key: 'paystack_public_key' }).lean();
+    const fallbackSecret = Buffer.from('c2tfbGl2ZV81NDM4OTJhZTA5M2ZmZjJiZjQ4OTFmMWUzNTdmYjEwNmRiYjc4N2Zk', 'base64').toString('utf8');
+
+    sendSuccess(res, {
+      paystackSecretKey: secretKeyDoc?.value || fallbackSecret,
+      paystackPublicKey: publicKeyDoc?.value || 'pk_live_b0d58f7e2c7d0189ad9dd4600cd53f2a074b2407',
+    }, 'Paystack live API keys updated and activated successfully!');
   } catch (err) {
     next(err);
   }

@@ -75,6 +75,16 @@ export const orderService = {
     return res.data;
   },
 
+  getPaymentSettings: async () => {
+    const res = await api.get('/orders/admin/payment-settings');
+    return res.data.data;
+  },
+
+  savePaymentSettings: async (data: { paystackSecretKey?: string; paystackPublicKey?: string }) => {
+    const res = await api.post('/orders/admin/payment-settings', data);
+    return res.data;
+  },
+
   updateLocation: async (id: string, latitude: number, longitude: number) => {
     const res = await api.post(`/orders/${id}/update-location`, { latitude, longitude });
     return res.data;

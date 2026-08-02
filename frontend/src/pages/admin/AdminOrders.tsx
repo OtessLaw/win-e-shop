@@ -5,7 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../../services/orderService';
 import { formatCurrency, formatDate, getOrderStatusLabel } from '../../utils/helpers';
 import type { Order } from '../../types';
-import { FiSearch, FiEye } from 'react-icons/fi';
+import PaymentSettingsModal from '../../components/admin/PaymentSettingsModal';
+import SMSSettingsModal from '../../components/admin/SMSSettingsModal';
+import { FiSearch, FiEye, FiCreditCard, FiMessageSquare } from 'react-icons/fi';
 
 const statusOptions = ['all', 'pending', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'];
 
@@ -13,6 +15,8 @@ const AdminOrders: React.FC = () => {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-orders', page, status, search],
@@ -30,7 +34,24 @@ const AdminOrders: React.FC = () => {
       <Helmet><title>Orders | JJ Vintage Admin</title></Helmet>
 
       <div className="space-y-6">
-        <h1 className="font-display text-2xl font-bold">Orders</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="font-display text-2xl font-bold">Orders</h1>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="bg-black hover:bg-gray-900 border border-gold-500/40 text-gold-400 font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded flex items-center gap-2 transition-all shadow-sm"
+            >
+              <FiCreditCard size={15} /> Paystack API Keys
+            </button>
+            <button
+              onClick={() => setIsSMSModalOpen(true)}
+              className="bg-black hover:bg-gray-900 border border-gray-800 text-gray-300 font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded flex items-center gap-2 transition-all shadow-sm"
+            >
+              <FiMessageSquare size={15} /> SMS Settings
+            </button>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="bg-white border border-gray-100 p-4 rounded-sm flex gap-4 flex-wrap">
@@ -122,6 +143,9 @@ const AdminOrders: React.FC = () => {
             </div>
           )}
         </div>
+
+        <PaymentSettingsModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} />
+        <SMSSettingsModal isOpen={isSMSModalOpen} onClose={() => setIsSMSModalOpen(false)} />
       </div>
     </>
   );

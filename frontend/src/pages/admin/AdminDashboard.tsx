@@ -11,7 +11,9 @@ import {
   FiDollarSign, FiShoppingBag, FiUsers, FiAlertTriangle,
   FiArrowRight, FiTrendingUp, FiPackage,
 } from 'react-icons/fi';
-import api from '../../services/api';
+import PaymentSettingsModal from '../../components/admin/PaymentSettingsModal';
+import SMSSettingsModal from '../../components/admin/SMSSettingsModal';
+import { FiCreditCard, FiMessageSquare } from 'react-icons/fi';
 import { formatCurrency, formatDate, getOrderStatusLabel } from '../../utils/helpers';
 import type { AnalyticsOverview, SalesDataPoint, Order } from '../../types';
 
@@ -123,6 +125,9 @@ const AdminDashboard: React.FC = () => {
     cancelled: 'status-cancelled',
   };
 
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
+
   return (
     <>
       <Helmet>
@@ -131,13 +136,24 @@ const AdminDashboard: React.FC = () => {
 
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-sm text-gray-500 font-sans mt-1">Welcome back! Here's what's happening today.</p>
           </div>
-          <div className="text-xs text-gray-400 font-sans">
-            {new Date().toLocaleDateString('en-GH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="bg-black hover:bg-gray-900 border border-gold-500/40 text-gold-400 font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded flex items-center gap-2 transition-all shadow-sm"
+            >
+              <FiCreditCard size={15} /> Paystack API Keys
+            </button>
+            <button
+              onClick={() => setIsSMSModalOpen(true)}
+              className="bg-black hover:bg-gray-900 border border-gray-800 text-gray-300 font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded flex items-center gap-2 transition-all shadow-sm"
+            >
+              <FiMessageSquare size={15} /> SMS Settings
+            </button>
           </div>
         </div>
 
@@ -264,6 +280,9 @@ const AdminDashboard: React.FC = () => {
             )}
           </div>
         </div>
+
+        <PaymentSettingsModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} />
+        <SMSSettingsModal isOpen={isSMSModalOpen} onClose={() => setIsSMSModalOpen(false)} />
       </div>
     </>
   );

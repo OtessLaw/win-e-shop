@@ -8,6 +8,8 @@ import { orderService } from '../../services/orderService';
 import { formatCurrency, formatDate, getOrderStatusLabel } from '../../utils/helpers';
 import LiveMapTracker from '../../components/admin/LiveMapTracker';
 import SMSSettingsModal from '../../components/admin/SMSSettingsModal';
+import PaymentSettingsModal from '../../components/admin/PaymentSettingsModal';
+import { FiCreditCard } from 'react-icons/fi';
 import type { Order, OrderStatus } from '../../types';
 
 const STATUS_STEPS: OrderStatus[] = ['pending', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered'];
@@ -20,6 +22,7 @@ const AdminOrderDetail: React.FC = () => {
   const [statusNote, setStatusNote] = useState('');
   const [smsLog, setSmsLog] = useState<{ message: string; isError: boolean; time: string } | null>(null);
   const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const { data: order, isLoading } = useQuery<Order>({
     queryKey: ['admin-order', id],
@@ -153,13 +156,20 @@ const AdminOrderDetail: React.FC = () => {
 
             {/* Configure Live Gateway Settings */}
             <button
-              onClick={() => setIsSMSModalOpen(true)}
-              className="bg-gray-800 hover:bg-gray-700 text-gold-400 border border-gold-500/30 font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md ml-auto"
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="bg-black hover:bg-gray-900 text-gold-400 border border-gold-500/40 font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md ml-auto"
             >
-              ⚙️ Configure SMS API Keys
+              <FiCreditCard size={14} /> Paystack API Keys
+            </button>
+            <button
+              onClick={() => setIsSMSModalOpen(true)}
+              className="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-bold text-xs px-4 py-2.5 rounded-sm flex items-center gap-2 transition-colors shadow-md"
+            >
+              ⚙️ SMS API Keys
             </button>
           </div>
 
+          <PaymentSettingsModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} />
           <SMSSettingsModal isOpen={isSMSModalOpen} onClose={() => setIsSMSModalOpen(false)} />
 
           {/* Live Gateway SMS Diagnostic Status Log */}

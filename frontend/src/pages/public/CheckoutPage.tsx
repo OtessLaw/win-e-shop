@@ -206,69 +206,15 @@ const CheckoutPage: React.FC = () => {
       }
 
       // ── PAYSTACK PAYMENT ──
-      // Priority 1: If backend returned a Paystack redirect URL, use it immediately
+      // Directly redirect to official Paystack Checkout portal
       if (paystackUrl) {
         clearCart();
         window.location.href = paystackUrl;
         return;
       }
 
-      // Priority 2: Use Paystack Inline Popup (client-side)
-      setIsSubmitting(false); // Allow user to interact while popup loads
-
-      const launchInlinePopup = () => {
-        const PaystackPop = (window as any).PaystackPop;
-        if (!PaystackPop) {
-          // If inline JS still didn't load, go to order page
-          toast.error('Payment gateway could not load. Your order has been saved.');
-          clearCart();
-          navigate(`/account/orders/${order._id}`);
-          return;
-        }
-
-        const handler = PaystackPop.setup({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_b0d58f7e2c7d0189ad9dd4600cd53f2a074b2407',
-          email: addressData.email,
-          amount: Math.round(total * 100),
-          currency: 'GHS',
-          ref: `JJ-${order._id}-${Date.now()}`,
-          channels: paymentMethod === 'paystack_mobile_money'
-            ? ['mobile_money']
-            : ['card', 'mobile_money', 'bank_transfer', 'qr'],
-          callback: async (response: { reference: string }) => {
-            toast.loading('Verifying payment...', { id: 'pay-verify' });
-            try {
-              await orderService.verifyPayment(response.reference, order._id);
-              toast.success('Payment successful!', { id: 'pay-verify' });
-            } catch {
-              toast.dismiss('pay-verify');
-            }
-            clearCart();
-            navigate(`/order-confirmation/${order._id}`, { replace: true });
-          },
-          onClose: () => {
-            toast('Payment window closed. Your order has been saved.', { icon: 'ℹ️' });
-            clearCart();
-            navigate(`/account/orders/${order._id}`);
-          },
-        });
-        handler.openIframe();
-      };
-
-      // Ensure Paystack inline script is loaded
-      if ((window as any).PaystackPop) {
-        launchInlinePopup();
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://js.paystack.co/v1/inline.js';
-        script.onload = () => launchInlinePopup();
-        script.onerror = () => {
-          toast.error('Payment gateway could not load. Your order has been saved.');
-          clearCart();
-          navigate(`/account/orders/${order._id}`);
-        };
-        document.body.appendChild(script);
-      }
+      toast.error('Payment gateway URL could not be generated. Please configure Paystack API keys in Admin Dashboard.');
+      setIsSubmitting(false);
     } catch (err: any) {
       console.error('Order checkout error:', err);
       let msg = 'Order failed. Please try again.';
